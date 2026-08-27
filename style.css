@@ -1,0 +1,418 @@
+/* --- VARIABLES Y CONFIGURACIÓN BÁSICA --- */
+:root {
+    --bg-color: #fcfcfc;
+    --text-color: #2b2b2b;
+    --primary-color: #1a365d; /* Azul Marino Académico */
+    --secondary-color: #4a5568;
+    --accent-color: #3182ce;
+    --sidebar-bg: #f7fafc;
+    --sidebar-border: #e2e8f0;
+    --sidebar-hover-bg: #edf2f7;
+    --code-bg: #f8f9fa;
+    --code-border: #e9ecef;
+    --callout-def-border: #3182ce;
+    --callout-def-bg: #ebf8ff;
+    --callout-challenge-border: #38a169;
+    --callout-challenge-bg: #f0fff4;
+    --callout-default-bg: #f7fafc;
+    --table-even-bg: #f8f9fa;
+    --canvas-bg: #ffffff;
+}
+
+/* PALETA DE COLORES MODO OSCURO */
+:root.dark-mode {
+    --bg-color: #121214; /* Fondo oscuro moderno */
+    --text-color: #e2e8f0; /* Texto claro */
+    --primary-color: #90cdf4; /* Títulos celestes para óptima legibilidad */
+    --secondary-color: #cbd5e0;
+    --accent-color: #63b3ed;
+    --sidebar-bg: #1a1b23; /* Sidebar ligeramente más oscuro que el fondo principal */
+    --sidebar-border: #2d3748;
+    --sidebar-hover-bg: #2d3748;
+    --code-bg: #1e222b;
+    --code-border: #2d3748;
+    --callout-def-border: #4299e1;
+    --callout-def-bg: #1a2a44;
+    --callout-challenge-border: #48bb78;
+    --callout-challenge-bg: #16302b;
+    --callout-default-bg: #1a1b23;
+    --table-even-bg: #1e222b;
+    --canvas-bg: #1a1b23;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.7;
+    display: flex;
+    overflow-x: hidden;
+    max-width: 100%;
+    overscroll-behavior-x: none;
+    /* Transición fluida al cambiar de tema */
+    transition: background-color 0.3s ease, color 0.3s ease; 
+}
+
+/* Regla global para que ningún multimedia rompa el layout */
+img, video, canvas, iframe, object, embed, svg {
+    max-width: 100%;
+    height: auto;
+    display: block; /* Evita pequeños márgenes fantasma en la parte inferior */
+}
+
+/* --- SIDEBAR DE NAVEGACIÓN --- */
+aside {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    padding: 2rem 1.5rem;
+    overflow-y: auto;
+    z-index: 100;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* DISEÑO DE LA CABECERA Y EL BOTÓN DE CAMBIO DE TEMA */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--sidebar-border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    transition: border-color 0.3s ease;
+}
+
+.sidebar-header h2 {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    max-width: 75%;
+}
+
+.theme-toggle-btn {
+    background: none;
+    border: 1px solid var(--sidebar-border);
+    color: var(--secondary-color);
+    padding: 0.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle-btn:hover {
+    background-color: var(--sidebar-hover-bg);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+aside h2 {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--sidebar-border);
+    padding-bottom: 0.5rem;
+    transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+aside ul {
+    list-style: none;
+}
+
+aside ul li {
+    margin-bottom: 0.75rem;
+}
+
+aside ul li a {
+    color: var(--secondary-color);
+    text-decoration: none;
+    font-size: 0.95rem;
+    display: block;
+    padding: 0.4rem 0.75rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+aside ul li a:hover, aside ul li a.active {
+    background-color: var(--sidebar-hover-bg);
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+/* --- CONTENIDOR PRINCIPAL --- */
+main {
+    margin-left: 280px;
+    padding: 3rem 2rem; /* Reducimos el padding lateral de 4rem a 2rem para no dejar tanto hueco */
+    max-width: 1200px; /* Aumentamos el límite para pantallas grandes, o puedes borrar esta línea para que ocupe el 100% */
+    width: calc(100% - 280px);
+    min-width: 0; 
+}
+
+/* --- PORTADA Y TITULARES --- */
+header {
+    margin-bottom: 4rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    padding-bottom: 2rem;
+    transition: border-color 0.3s ease;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    transition: color 0.3s ease;
+}
+
+header p.subtitle {
+    font-size: 1.1rem;
+    color: var(--secondary-color);
+    font-style: italic;
+    transition: color 0.3s ease;
+}
+
+section {
+    margin-bottom: 4rem;
+    scroll-margin-top: 2rem;
+}
+
+h2.section-title {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.3s ease;
+}
+
+h3 {
+    font-size: 1.3rem;
+    color: var(--secondary-color);
+    margin: 1.5rem 0 0.75rem 0;
+    transition: color 0.3s ease;
+}
+
+h4 {
+    font-size: 1.1rem;
+    color: var(--secondary-color);
+    margin: 1.5rem 0 0.75rem 0;
+    transition: color 0.3s ease;
+}
+
+h5 {
+    font-size: 0.95rem;
+    color: var(--secondary-color);
+    margin: 1.5rem 0 0.75rem 0;
+    transition: color 0.3s ease;
+}
+
+p {
+    margin-bottom: 1.25rem;
+}
+
+/* --- SÍMBOLOS Y SANGRÍA PARA LISTAS --- */
+main ul, main ol {
+    padding-left: 2rem;
+    margin-bottom: 1.25rem;
+}
+
+main li {
+    margin-bottom: 0.5rem;
+}
+
+/* --- ELEMENTOS DE MAQUETACIÓN ESPECIALES --- */
+
+/* Bloques de Código */
+pre {
+    background-color: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 6px;
+    padding: 1.25rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+    max-width: 100%;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+code {
+    font-family: "Fira Code", Consolas, Monaco, monospace;
+    font-size: 0.9rem;
+    color: #d63384;
+}
+
+pre code {
+    color: var(--text-color);
+    font-size: 0.9rem;
+    transition: color 0.3s ease;
+}
+
+/* Tablas / Matrices */
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+/* --- CLASES DE UTILIDAD --- */
+.text-center {
+    text-align: center;
+}
+
+th, td {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--sidebar-border);
+    text-align: left;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+th {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+tr:nth-child(even) {
+    background-color: var(--table-even-bg);
+}
+
+/* Cuadros Destacados (Callouts) */
+.callout {
+    border-left: 4px solid;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0 6px 6px 0;
+    background-color: var(--callout-default-bg);
+    transition: background-color 0.3s ease;
+}
+
+.callout.definition {
+    border-left-color: var(--callout-def-border);
+    background-color: var(--callout-def-bg);
+}
+
+.callout.challenge {
+    border-left-color: var(--callout-challenge-border);
+    background-color: var(--callout-challenge-bg);
+}
+
+.callout-title {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.callout.definition .callout-title { color: #2b6cb0; }
+.callout.challenge .callout-title { color: #276749; }
+
+:root.dark-mode .callout.definition .callout-title { color: #90cdf4; }
+:root.dark-mode .callout.challenge .callout-title { color: #81e6d9; }
+
+/* Contenedor universal para gráficos y multimedia compleja */
+.canvas-container, .media-wrapper {
+    background: var(--canvas-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 6px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    max-width: 100%;
+    
+    position: relative; /* Requerido por Chart.js para calcular tamaños relativos */
+    height: 400px;      /* Alto controlado y elegante para pantallas de escritorio */
+    overflow-x: auto;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+
+/* ========================================================= */
+/* ADAPTACIÓN PARA MÓVILES Y TABLETS (DISEÑO RESPONSIVE)     */
+/* ========================================================= */
+
+@media screen and (max-width: 768px) {
+    .canvas-container, .media-wrapper {
+        padding: 0.75rem; 
+    }
+
+    /* Si decides que el gráfico de Chart.js DEBE tener un ancho mínimo para ser legible */
+    /* Puedes forzar al canvas interno a no encogerse de más, activando el scroll horizontal del contenedor */
+    .canvas-container canvas {
+        min-width: 400px; /* Ajusta este valor según la legibilidad de tu gráfico */
+        height: 320px;
+        padding: 1rem 0.5rem;
+    }
+
+    body {
+        flex-direction: column;
+    }
+
+    aside {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 2px solid var(--sidebar-border);
+        padding: 1.5rem;
+    }
+
+    main {
+        margin-left: 0;
+        width: 100%;
+        padding: 2rem 1.25rem;
+    }
+
+    header h1 { font-size: 1.8rem; }
+    h2.section-title { font-size: 1.5rem; }
+
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+
+    pre code {
+        font-size: 0.8rem; 
+    }
+
+    /* Fórmulas matemáticas (KaTeX) */
+    .katex-display {
+        display: block; 
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        padding-bottom: 0.5rem;
+        padding-top: 0.5rem;
+        -webkit-overflow-scrolling: touch; 
+    }
+
+    .katex {
+        white-space: normal !important;
+        word-break: break-word;
+    }
+}

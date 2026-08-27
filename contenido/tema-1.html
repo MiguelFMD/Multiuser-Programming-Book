@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 1: Introduction to Data Networks</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="tema-1">
+            <h2 class="section-title">
+                <i class="fa-solid fa-bookmark"></i> Chapter 1: Introduction to Data Networks
+            </h2>
+            
+            <h3>1. Server and Clients</h3>
+            <p>In multiplayer gaming, networking enables players to connect to a central server or directly
+            to each other. This allows them to share data and play together in real-time. The same game
+            application runs simultaneously on each player’s device, and each player’s actions are then
+            synchronized across the network. </p>
+
+            <p> AÑADIR AQUÍ IMAGEN</p>
+
+            <p> A typical networked game consists of two main components in its architecture, clients and
+            servers: </p>
+            <ul>
+                <li><strong>Clients</strong> are the instances of the game running on players’ devices – PCs, consoles, or
+                mobile phones. Clients render the game graphics, play the audio, handle user input, and send
+                updates to the server about the player’s actions.
+                </li>
+                <li><strong>Servers</strong>, on the other hand, manage the game state, the current status of all the elements in
+                the game. They handle communication between clients and enforce the game’s rules. Servers
+                can be dedicated, headless machines run by the game developers or they can be playerhosted, where one of the players also acts as the server.
+                </li>
+            </ul>
+            
+            <p> The server receives inputs from clients, processes game logic, and sends updates back to clients.
+            Although the server is the final authority on the game state, clients maintain local copies for
+            responsive gameplay. Constant synchronization then keeps the game as consistent as possible for
+            all players in real-time.</p>
+
+            <p> AÑADIR AQUÍ IMAGEN</p>
+            
+            <h3>2. UDP Packets</h3>
+
+            <p> Clients and servers communicate by exchanging data packets using standard Internet protocols like UDP (User Datagram Protocol). In real-time applications, especially fast-paced
+            games like first-person shooters, UDP is preferred to TCP (Transmission Control Protocol)
+            because it gives full control to the game to prioritize different aspects of the communication.
+            Unlike TCP, UDP does not require acknowledgement from the recipient. This makes UDP a
+            more efficient and flexible foundation but it also puts the burden on the application to handle
+            cases when such functionality is required. </p>
+
+            <p>Each UDP packet consists of a header and a payload. The UDP payload contains additional
+            protocol-specific sections, each with their own headers and payloads. In networking
+            terminology, this nesting is known as <strong>encapsulation</strong>.</p>
+
+            <p> IMAGEN DE PAQUETE</p>
+
+            <p>The IP and UDP headers are of a fixed size and contain important metadata like the address of the
+            sender and receiver (IP address and ports). The payload varies in size, structure, and content,
+            depending on the specific game and context. For example, a payload could carry player inputs
+            or a snapshot of the game state at one moment in time.</p>
+
+            <p>UDP packets favor low latency and speed, essential for real-time applications; however, this
+            speed comes with a lack of reliability as a tradeoff. The UDP protocol doesn’t provide any
+            mechanisms for reliability, ordering, or congestion control. A packet traveling through the
+            internet could experience errors, including:</p>
+
+            <ul>
+                <li><strong>Packet Loss</strong>: Sometimes a packet may get lost and never arrive at its destination. This
+                could be due to network congestion, faulty hardware, or other issues.</li>
+                <li><strong>Duplication</strong>: A packet might be duplicated, resulting in the same packet arriving multiple
+                times at the receiver. This can happen due to misconfigured network hardware or software.</li>
+                <li><strong>Reordering</strong>: Packets may arrive at the receiver in a different order than they were sent.
+                This can happen if packets take different routes to the destination that have varying
+                latencies.</li>
+                <li><strong>Corruption</strong>: Packet contents may get altered during transmission, resulting in unusable
+                data.</li>
+            </ul>
+
+            <h3>3. Ticks and updates</h3>
+
+            <p> In a multiplayer game, the server handles the core game logic, physics simulations, and other
+            gameplay functions, even if it doesn’t have a display.</p>
+            
+            <p>As the server is only handling the global game state, it takes its input from the clients, much
+            like a single-player game handles inputs from a local player. Instead of having a mouse and
+            keyboard, the server processes those inputs to maintain the “authoritative game state” – this
+            includes everything from current player positions and object states to physics calculations and
+            game progress.</p>
+
+            <p>The heart of server-side processing is the server tick. A server tick is a cycle during which
+            the server updates the game state based on received inputs. This happens at a fixed interval
+            known as the tick rate, measured in Hertz (Hz) or ticks per second. This tick rate determines
+            the frequency at which the game world is updated.</p>
+
+            <p>Conversely, the update rate refers to how frequently the client exchanges data with the
+            server. A higher update rate can enhance the responsiveness of the game but requires more
+            bandwidth and processing power. It’s typically constrained by the client’s network capabilities
+            and computing resources.</p>
+
+            <p>AÑADIR IMAGEN</p>
+
+            <p>A higher tick rate can improve the game’s responsiveness but may strain server resources.
+            Similarly, a higher update rate enhances interaction smoothness at the expense of greater
+            data transmission. Creating a smooth and responsive multiplayer experience hinges on finding the right balance between the tick rate and the update rate.</p>
+
+            <p>The actual tick rate can vary based on gameplay needs. A fast-paced first person shooter
+            often runs at tick rates of 60 Hz or higher to reflect fast player movements and split-second
+            shots. A real-time strategy game, on the other hand, doesn’t rely on twitch reflexes, so a tick
+            rate of 30 Hz may be sufficient. Meanwhile, a large-scale strategy MMO might use a fairly low
+            tick rate of 10 Hz in order to support an extensive number of concurrent players.</p>
+            
+            <h3>4. Latency</h3>
+
+            <p>Latency is the time it takes for data to travel from the source to the destination. Round-trip
+            time (RTT), also known as <i>ping</i>, measures how long it takes for a packet to travel to its destination and return with
+            a response, providing a gauge of network latency.</p>
+
+            <p>While subjective, a general rule of thumb is that users notice gameplay degradation around
+            200ms of latency. Different types of games can tolerate more or less latency. For example,
+            first-person shooter games perform best with less than 100ms of latency, whereas real-time
+            strategy games might allow higher latency values of up to 500 ms.</p>
+            
+            <p> AÑADIR IMAGEN</p>
+
+            <p> Lower latency produces a responsive experience for the player. Ideally, there is minimal delay
+            between a user’s action and seeing the expected result in a multiplayer game. High latency
+            leads to noticeable delays during gameplay.</p>
+
+            <h3>5. Network synchronization</h3>
+
+            <p>To stay in sync, clients and the server continuously exchange messages in order to maintain a
+            consistent game state across all players. Typically, clients usually send user commands to the
+            server at a high frequency – often at 60 Hz, or about every 16 milliseconds. These commands
+            might be actions or inputs; for example, mouse or gamepad movements or button presses for
+            jumping and shooting.</p>
+            
+            <p>Once the server receives and processes the client commands, it then sends updates about
+            the game world back to the clients. The faster the game reacts to player input, the more
+            responsive it feels.</p>
+
+            <p>Just bear in mind that the server’s tick rate, the client’s update rate, and the client’s frame rate
+            serve different purposes and don’t need to match. In fact, achieving perfect synchronization is
+            uncommon. A server and its clients are constantly in flux, exchanging a continuous stream of
+            dynamic data. The objective is to reduce their discrepancies, thereby creating the illusion that
+            all clients are playing in unison.</p>
+
+            <h4>Techniques for network synchronization</h4>
+
+            <ul>
+                <li><strong>State synchronization</strong>: involves the periodic transmission of the state of network objects from
+                the server to the clients. How frequently these game updates happen can vary based on the
+                specific needs of the game genre (e.g. a competitive shooter versus a co-op strategy game).</li>
+                <li><strong>Remote procedure calls (RPCs)</strong>: invoke functions on the server or other clients remotely. Use
+                RPCs for client-to-server communication, such as sending player inputs, requesting specific
+                actions, or triggering one-time game events.</li>
+                <li><strong>Bandwidth management</strong>: can significantly impact performance. Synchronization consumes
+                bandwidth, so implement strategies like the following to reduce data transmission over the
+                network: </li>
+                    <ul>
+                        <li><strong>Data culling</strong>: This reduces network traffic by excluding non-essential updates, focusing
+                        only on what is necessary for gameplay. For instance, you can sync only critical axes
+                        of movement or trigger VFX and animations locally using events instead of continuously
+                        synchronizing them. Any reduction in network traffic can enhance game performance.</li>
+                        <li><strong>Delta compression</strong>: This also goes by the term delta encoding. It allows the server
+                        to send only the changes (deltas) since the last update. Clients then apply only these
+                        deltas to their local game state to keep it in sync with the server</li>
+                        <li><strong>Interest management</strong>: This prioritizes data synchronization based on several criteria.
+                        Spatial relevance determines the priority of objects based on their distance from the
+                        player and their visibility. Age (or staleness) prioritizes objects or data that haven’t been
+                        transmitted recently, making them higher-priority until updated. Interaction focuses on
+                        objects that have recently interacted with the player or are likely to do so soon.</li>
+                    </ul>
+            </ul>
+
+            <h3>6. Network topologies</h3>
+
+            <p>Simply put, a network topology defines how devices are connected and communicate in a
+            multiplayer environment. Each network model has its own advantages and disadvantages.
+            Choosing one depends on the type of game, the desired level of control over the game state,
+            and the resources available for server infrastructure.</p>
+
+            <p>Topologies can impact the game’s architecture, performance, and the overall player
+            experience. Netcode for GameObjects supports two primary topologies: client-server and
+            distributed authority. Let’s unpack what that means.</p>
+
+            <h4>Client-server topology</h4>
+
+            <p>The client-server topology is a common network model that divides responsibilities between
+            client devices and a central server to optimize performance and manage the game effectively.</p>
+
+            <p>A client represents a player’s game instance, handling local inputs, rendering, and partial
+            simulation of the game state. Clients send local inputs like character movements to the server
+            and receive updates in return.</p>
+
+            <p>The server maintains the definitive, accurate representation of the game world, processing
+            player inputs and enforcing game rules. This central server resolves conflicts and validates
+            actions, ensuring a consistent and fair experience for all players. This setup also helps prevent
+            cheating by controlling game state centrally.</p>
+
+            <p>Clients and servers can communicate with each other over the internet or a local area network
+            (LAN). Offline LAN games connect multiple devices within the same physical vicinity through a
+            local network without needing internet access. This setup bypasses the internet and ensures
+            minimal latency, high security, and reliable connectivity due to the close proximity of the
+            devices. This makes it suitable for LAN parties, esports tournaments, and environments where
+            the internet is unstable</p>
+
+            <p>There are two types of servers within the client-server topology:</p>
+
+                <h5>Dedicated game server</h5>
+
+                <p>A dedicated game server is a separate entity that only processes data and doesn’t participate
+                as a player. It can offer the highest performance while handling all major simulations and
+                player interactions in networked games.</p>
+
+                <p>Dedicated servers are integral for games where minimizing cheating is paramount.
+                However, this setup can introduce communication latency as all player state changes need to be processed by
+                the server before being relayed to other clients.</p>
+
+                <p>Dedicated servers are particularly well-suited for performance-sensitive, competitive games such as first-person shooters. They can be essential to
+                maintaining fairness and reducing disruptive behavior</p>
+
+                <p>AÑADIR IMAGEN</p>
+
+                <h5>Client-hosted listen server</h5>
+
+                <p>A client-hosted listen server acts as both server and client, allowing the host to play the
+                game. This can help reduce costs but gives the host a latency advantage (since no packets
+                need to be sent across the network).</p>
+
+                <p>This setup often results in degraded server performance since the same machine is tasked with running the game server and generating the visual output
+                for the host player. Also, because the hosting client services connections via
+                a residential internet connection, it can be slower than using a dedicated server
+                in a remote data center. This is because residential internet service providers
+                typically prioritize download performance over upload performance.</p>
+
+                <p>AÑADIR IMAGEN</p>
+
+            <h4>Distributed authority</h4>
+
+            <p>The distributed authority network model decentralizes control and management of game
+            state among all participating clients. Each client is responsible for owning, tracking, and
+            managing a portion of the state of objects within the game, with the ability to spawn and
+            manage these objects autonomously.</p>
+
+            <p>A central, lightweight service monitors changes in object states and manages the routing of
+            network traffic, but it does not simulate the game itself.</p>
+
+            <p>This topology offers several benefits, including reduced costs and lower input latency, as
+            it eliminates the need for a central server to process all game actions and reduces network
+            round-trips since each client is authoritative over its own objects. For example, that means
+            it can handle actions like movement, attacks, or other game inputs locally without waiting
+            for permission from a server. This results in more immediate feedback for the player, which
+            in turn makes the game feel more responsive. However, it also can be subject to increased
+            vulnerability to cheating as there’s no single authoritative server to validate all actions.</p>
+            
+            <p>Distributed authority is less suitable for games requiring precise simulations or high
+            competitiveness but works well for games with less critical interaction needs</p>
+            
+            <p>AÑADIR IMAGEN</p>
+
+            <h4>Local or couch multiplayer</h4>
+
+            <p>Local multiplayer games use a single client runtime instance that can be played by two or
+            more people on the same screen in the same physical location. This setup is ideal for social
+            gaming scenarios, offering direct interaction among players without any need for networking.
+            It’s popular in party games and co-op modes, providing a straightforward way for friends and
+            family to play together</p>
+
+            <h4>Peer-to-peer (P2P)</h4>
+            
+            <p>Each device functions as both client and server, allowing for direct connections between
+            players. This resembles distributed authority but disposes of the lightweight server altogether.
+            This method helps reduce the need for centralized servers, lowering costs and complexity.
+            However, it can introduce challenges in ensuring fairness and consistent latency, as there is no
+            central authority to manage game state and security.</p>
+
+            <h3>Network stack</h3>
+
+            <p>A protocol stack, or network stack, is generally speaking software that implements various
+            communication protocols to enable data transmission across networks. It’s organized like a
+            layered cake:</p>
+
+            <p>AÑADIR IMAGEN</p>
+
+            <p>Each layer only interacts with the layers directly above and below it, providing modularity and
+            simplifying network management</p>
+
+            <ul>
+                <li><strong>Application layer</strong>: The high-level of the stack where most Unity development takes
+                place. Packages like Netcode for GameObjects or Netcode for Entities abstract away the
+                complexities of lower-level networking, allowing developers to focus on implementing
+                multiplayer functionality.</li>
+                <li><strong>Transport layer</strong>: The transport layer is responsible for providing reliable data transfer, error
+                detection and correction, flow control, and ensuring end-to-end communication between
+                devices in a network. It facilitates the segmentation and reassembly of data packets and
+                provides mechanisms for error recovery and data integrity. </li>
+                <li><strong>Network layer</strong>: The network layer is responsible for routing data packets between networked
+                devices across different networks. It relies on the network infrastructure and protocols, such
+                as IP (Internet Protocol), to handle communication.</li>
+                <li><strong>Data link and physical layers</strong>: These layers directly handle physical transmission of data
+                packets over the network medium, such as Ethernet or Wi-Fi. The data link layer and physical
+                layers are typically handled by the operating system and network hardware.</li>
+            </ul>
+
+            <p>As a Unity developer, you’ll primarily work with the high-level application layer to implement
+            multiplayer features, such as synchronizing GameObjects, managing game state, and handling
+            player interactions.</p>
+
+            <p>Generally, you won’t need to worry about the lower layers unless your application has specific
+            requirements. This simplifies the network stack to something that looks like this:</p>  
+
+            <p>AÑADIR IMAGEN</p>
+        </section>
+    </main>
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+    </script>
+</body>
+</html>
