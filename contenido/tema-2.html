@@ -70,7 +70,320 @@
 
             <p>In this chapter we will explain and work with all of these elements.</p>
 
-            <h3>Setting up</h3>
+            <h3>NetworkManager</h3>
+
+            <p>Every project will need a NetworkManager component to support networked multiplayer. This
+            essential component manages the network state of your project, handling connections and
+            network configurations.</p>
+
+            <p>In the NetworkManager component, configure the Network Transport layer. Choose Unity
+            Transport</p>
+
+            <p>This attaches a UnityTransport component to the GameObject. The transport layer
+            is responsible for low-level networking tasks, such as connection management, data
+            transmission, and packet encryption.</p>
+
+            <p>Though you don’t need to modify these settings yet, this component can help simulate
+            network conditions (e.g., latency, packet loss, and jitter) for testing and debugging in the
+            Editor.</p>
+
+            <h4>Unity Transport</h4>
+            
+            <p>The Unity Transport Package is a netcode-agnostic library that provides a low-level network
+            layer focused on performance and reliability – a modern, secure, and portable transport library
+            that extends the conventional UDP with advanced features:</p>
+
+            <ul>
+                <li><strong>Reliability</strong>: Adds reliable communication over UDP, ensuring critical messages are
+                delivered without the overhead of TCP</li>
+                <li><strong>Security</strong>: Incorporates encryption and authentication to protect data from unauthorized
+                access</li>
+                <li><strong>Performance</strong>: Optimized for low latency and high throughput</li>
+                <li><strong>Cross-platform compatibility</strong>: Designed to work seamlessly across different platforms
+                and devices</li>
+            </ul>
+
+            <h3>NetworkObjects</h3>
+
+            <p>is a required component for any GameObject that needs to be networked or
+            synchronized across different clients in a multiplayer game. When you add a NetworkObject
+            component to a GameObject, it becomes “networkable,” meaning that its state and behavior
+            can be shared and updated across the network.</p>
+
+            <p>Each NetworkObject has a few identifiers:</p>
+
+            <ul>
+                <li>The <strong>GlobalObjectIdHash</strong> identifies the prefab asset in the project.</li>
+                <li>The <strong>NetworkObjectId</strong> is the unique identifier that differentiates instances of the same
+                prefab asset.</li>
+                <li>The <strong>OwnerClientId</strong> represents the client that “owns” the object (see Authority below).</li>
+            </ul>
+
+            <p>These identifiers help the NetworkManager keep track of it and ensure that its state is
+            consistent across all connected clients. NetworkObjects can be dynamically created
+            (spawned) or destroyed during gameplay. </p>
+
+            <p>Spawning a NetworkObject makes it appear on all connected clients. Each NetworkObject has
+            an owner, typically the client that controls its behavior and state.</p>
+
+            <h3>Player NetworkObjects</h3>
+
+            <p>Each player can optionally have their own prefab called a Player NetworkObject. This is
+            a special type of NetworkObject that often contains the character controller and visual
+            representation of the player in the game.</p>
+
+            <p>Player NetworkObjects often store and sync player-specific data, such as the player’s name,
+            score, inventory, or other relevant information. This data is synchronized across the network
+            to ensure that all connected players have a consistent view of the game state.</p>
+
+            <p>When a client connects, the NetworkManager creates a Player NetworkObject that is “owned”
+            by the corresponding player. This means that the player has authority over their PlayerObject
+            and can control its behavior and state</p>
+
+            <p>To set up a Player NetworkObject, start by creating a standard prefab GameObject in your
+            project. This prefab acts as a template for the PlayerObject, containing the necessary
+            components and scripts that define the player’s behavior and appearance.</p>
+
+            <p>Then, add the appropriate netcode components. These might include:</p>
+
+            <ul>
+                <li><strong>NetworkObject</strong>:  Every object that will be networkable needs a NetworkObject
+                component. This contains properties and events related to spawning, despawning, and
+                ownership</li>
+                <li><strong>NetworkBehaviours</strong>: These scripts add networking behavior to their MonoBehaviour
+                base class. NetworkBehaviours contain network variables, remote procedure calls
+                (RPCs), and network callbacks.</li>
+                <li><strong>NetworkAnimators</strong>: This component syncs animation states and parameters between
+                clients.</li>
+                <li><strong>NetworkTransform</strong>: This component ensures that the player’s position, rotation, and
+                scale are replicated in real-time from the server to all connected clients.</li>
+            </ul>
+
+            <p>Player NetworkObjects are often responsible for handling player input. When a player performs
+            an action, such as moving or interacting with the game world, the input is processed and then
+            propagated to other connected players as needed.</p>
+
+            <p>Player logic involves a combination of MonoBehaviours for direct game mechanics and
+            NetworkBehaviours for managing network states. Non-networked components, such as
+            character controllers and animators, function normally on each player’s local instance.</p>
+
+            <p>Using these components locally not only optimizes performance but also reduces network
+            traffic, which can be important when working with limited bandwidth between your clients.</p>
+
+            <h3>Network Behaviour</h3>
+
+            <p>A NetworkBehaviour is a specialized type of MonoBehaviour, designed for networked logic. It
+            provides the framework necessary for synchronizing actions and states across different game
+            clients.</p>
+
+            <p>NetworkBehaviour shares the same lifecycle events as MonoBehaviours but also
+            incorporates several network-specific features:</p>
+
+            <ul>
+                <li><strong>RPC Methods</strong>: This is a specialized variable designed for synchronized state
+                management across the network. Changes to a NetworkVariable on the server are
+                automatically propagated to all clients.</li>
+                <li><strong>NetworkVariable</strong>: This is a specialized variable designed for synchronized state
+                management across the network. Changes to a NetworkVariable on the server are
+                automatically propagated to all clients.</li>
+                <li><strong>OnNetworkSpawn and OnNetworkDespawn</strong>: These lifecycle methods are triggered
+                when a NetworkBehaviour is instantiated or destroyed. OnNetworkSpawn is
+                used for initialization (think of OnEnable or Start except for networked behavior).
+                OnNetworkDespawn handles cleanup before an object is removed from the network
+                (e.g., analogous to OnDestroy or OnDisable).</li>
+                <li><strong>Ownership</strong>: NetworkBehaviour allows specific clients (or the server) to have ownership
+                over certain objects. This concept of authority, where either a client or the server can
+                “own” a NetworkObject, ensures that only designated players should be able to control
+                or interact with specific objects.</li>
+            </ul>
+            
+            <h4>Authority and ownership properties</h4>
+
+            <p>By default, the server owns NetworkObjects, although connected and approved clients
+            can also own NetworkObjects using the SpawnWithOwnership method. Netcode for
+            GameObjects is server-authoritative, which means that only the server is authorized to
+            spawn and despawn NetworkObjects.</p>
+
+            <p>NetworkBehaviour includes some quick ways to determine the authority and ownership of
+            an instance:</p>
+
+            <ul>
+                <li><strong>IsClient</strong> indicates if the instance is running on a client.</li>
+                <li><strong>IsServer</strong> indicates if the instance is running on a server.</li>
+                <li><strong>IsHost</strong> indicates if the instance is running on a host, which is both a server and a
+                client.</li>
+                <li><strong>IsLocalPlayer</strong> indicates if the associated NetworkObject is the local player object.</li>
+                <li><strong>IsOwner</strong> indicates if the local player owns the object or if the object is the local
+                player object.</li>
+                <li><strong>IsPlayerObject</strong> indicates if the GameObject represents a network player, typically
+                controlled by a specific client.</li>
+                <li><strong>IsSceneObject</strong> indicates if the GameObject is part of the scene by default and not
+                spawned dynamically during gameplay. A scene object is usually managed by the
+                server for consistent state across the network.</li>
+            </ul>
+
+            <p>Inspecting the NetworkObject at runtime shows some of these properties.</p>
+
+            <h3>Sync using a NetworkTransform and NetworkAnimator</h3>
+
+            <p>Though the NetworkBehaviour lets us spawn the same player instance on multiple clients,
+            synchronizing its movements across the network requires additional components.</p>
+
+            <p>Adding the <strong>NetworkTransform</strong> component to your NetworkObject prefab, allows you to sync the position, rotation, and scale of a Transform,
+            while the <strong>NetworkAnimator</strong> syncs the animation states. When the host player runs around 
+            the playground environment, its movements transfer to the client in Multiplayer Play Mode.</p>
+
+            <p>However, not everything won't work as expected. While the host syncs correctly to the client, the client’s movements may not
+            reflect on the host. The client receives input, as indicated by the character animating in place, but the player
+            instance doesn’t move. This happens because the NetworkTransform operates under server
+            authority, syncing only the server’s position to the client. When you try to move the player on the client, the server overrides the client’s desired
+            position, resetting it to (0, 0, 0).</p>
+
+            <h3>Applying client authority</h3>
+
+            <p>By default, NetworkTransform operates in server authoritative mode. Changes to the
+            transform axis are detected on the server-side and pushed to connected clients. Trying to transform the player on the client fails because the server – maintaining
+            an authoritative state with the transform set to (0,0,0) – overrides these client-side changes.</p>
+
+            <figure>
+                <img src="../img/img-10.png" style="max-width: 65%;">
+                <figcaption>Server authority overrides the client.</figcaption>
+            </figure>
+
+            <p>To resolve this, one approach is to transfer authority from the server to the client. This allows
+            the client to control its own transform without being overridden by the server. To implement this behavior, we can create a ClientNetworkTransform component.</p>
+
+            <p>This overrides the OnIsServerAuthoritative method and returns false. On
+            the Player NetworkObject prefab, replace the NetworkTransform with the custom
+            ClientNetworkTransform, and similarly, you can also create a client-driven NetworkAnimator.</p>
+
+            <p>Client-driven behaviors are also a way to reduce latency in networked applications. In “owner
+            authoritative mode,” networked behaviors can act immediately and responsively. The client
+            doesn’t need to wait for a packet to make a round trip to the server and back.</p>
+
+            <p>However, exercise care when creating such client-driven behaviors: they can improve the user
+            experience for each player, but also introduce security risks. Owner authoritative mode opens
+            your application to mods or hacks; in any online competitive game, players will cheat if given
+            the chance. To prevent this and make your application more secure, opt for server authority.</p>
+
+            <h3>Syncing with server authority</h3>
+
+            <p>Though you can allow some client authority for responsive gameplay, some movements can
+            only be done on the server side. Generally, you should use server authority to prevent any
+            potential imbalances or unfair advantages that could arise from client-controlled actions.</p>
+
+            <p>For instance, allowing clients to choose their spawn locations on the game map could give
+            them an undue advantage, depending on the layout of the map. Instead, it’s more equitable to
+            have the server randomly assign them to one of a set of predetermined spawn points.</p>
+
+            <p>This synchronization is essential for the multiplayer experience. Components such as
+            NetworkTransform and NetworkAnimator facilitate this process right out of the box, but for
+            gameplay, you’ll need to customize your own NetworkBehaviours as well.</p>
+
+            <h4>Network synchronization</h4>
+
+            <p>Network synchronization is essential for maintaining a consistent – and fair – gaming
+            experience for all players.</p>
+
+            <p>You’ve already seen how to synchronize player movements and animations with the Player
+            NetworkObject using a client-driven model. However, gameplay often involves more than
+            just the player character. Depending on your game design, your player may need to shoot
+            projectiles, open doors, or interact with other scene objects. These interactions will need to be
+            networkable, with their own game states that need to be synced between the clients and the
+            server.</p>
+
+            <p>In this section, we will set up client-server communication for gameplay actions, where the
+            player may interact with part of the game environment. This involves implementing networked
+            game states and sending remote procedure calls (RPCs) to and from the server.</p>
+
+            <h3>Network variables</h3>
+
+            <p>A NetworkVariable is a specialized variable designed for synchronized state management
+            across the network. Changes to a NetworkVariable on the server propagate to all clients. This
+            is ideal for continuously synchronized data, such as positions or health points.</p>
+
+            <p>While a NetworkTransform is specific to syncing transform data (position, rotation, scale), a
+            NetworkVariable can sync more general data types, including primitive types, custom structs,
+            and other data necessary for game state management.</p>
+
+            <p>When working on a client, you can’t change the NetworkVariable directly because it is serverauthoritative. Instead, the client must notify the server to make any changes. The server updates
+            the state and propagates it back, and only then does the client see the change take effect.</p>
+
+            <p>To handle communication for changes like this, we use an RPC. RPCs can allow one device to
+            require another device to perform specific actions or updates. RPCs can be called from the
+            client to the server, or vice versa.</p>
+
+            <h3>RPCs</h3>
+
+            <p>RPCs allow you to invoke functions on the server or other clients remotely. Methods marked
+            with [Rpc(SendTo.Server)] are called on the server from a client, and those marked with
+            [Rpc(SendTo.Client)] are called on clients from the server. You can also use the legacy
+            syntax [ServerRpc] or [ClientRpc] to indicate a server RPC or client RPC here.</p>
+
+            <p>RPCs are much like other methods, except they must follow a few conventions:</p>
+
+            <ul>
+                <li><strong>Rpc attribute</strong>: Annotate your method with the [Rpc] attribute and specify a possible
+                target, e.g., [Rpc(SendTo.Server)] will call the method only on the server.</li>
+                <li><strong>Naming convention</strong>: End the method name with the suffix “Rpc” e.g., DoSomethingRpc.</li>
+
+            </ul>
+
+            <p>RPCs are better suited for discrete events, such as player actions or specific game state
+            changes that do not need continuous synchronization.</p>
+
+            <h3>RPCs versus NetworkVariables</h3>
+
+            <p>When synchronizing data, choosing between NetworkVariables and RPCs depends on the use
+            case:</p>
+
+            <ul>
+                <li>NetworkVariables and NetworkTransforms are ideal for continuously synchronized data,
+                such as positions, health points, or in this case, the color state of the trigger. Here, the
+                color trigger uses a NetworkVariable to store its active color. Use cases: Health points, positional data, game scores</li>
+                <li>Remote procedure calls (RPCs) are better suited for discrete events, such as player
+                actions or specific game state changes that do not need continuous synchronization.
+                In this example, the RPC notifies all clients when a player enters the trigger zone,
+                prompting the server to change the color based on the player’s ID. Use cases: Player actions (e.g., shooting, using an ability), game events (e.g.,
+                spawning, game start, game won)</li>
+            </ul>
+
+            <p>Both mechanisms are essential for data synchronization in networked games, where
+            NetworkVariables manage ongoing states and RPCs handle specific events and actions.</p>
+
+            <p>These gameplay examples can help you determine when to use NetworkVariables or RPCs.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Task/system</th>
+                        <th>RPCs</th>
+                        <th>NetworkVariables</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                    <tr>
+                        <td>Inventory management</td>
+                        <td>Notify clients when an item is picked up or used, to be added or removed from the inventory.</td>
+                        <td>Maintain the current inventory for each player. The inventory can be a NetworkList that syncs the list of items.</td>
+                    </tr>
+                    <tr>
+                        <td>Combat systems</td>
+                        <td>Execute combat actions like attacks or special moves. An RPC can apply damage and effects.</td>
+                        <td>Track the health and status of each player. Health points and active status effects can be synced using NetworkVariables.</td>
+                    </tr>
+                    <tr>
+                        <td>Environmental interactions</td>
+                        <td>Trigger specific actions like opening a door or activating a mechanism. </td>
+                        <td>Maintain the state of interactive objects, such as whether a door is open or closed.</td>
+                    <tr>
+                        <td>Objectives</td>
+                        <td>Signal the completion of an objective.</td>
+                        <td>Track ongoing progress toward an objective. Store the number of items collected or completed tasks in a NetworkVariable.</td>
+                    </tr>
+                </tbody>
+            </table>
             
         </section>
     </main>
