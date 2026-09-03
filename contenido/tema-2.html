@@ -45,6 +45,32 @@
             </h2>
             
             <h3>1. Introduction</h3>
+
+            <p> For casual cooperative multiplayer games, Unity recommends using the Netcode for
+            GameObjects (NGO) package. This high-level solution simplifies developing multiplayer games
+            by abstracting networking logic, making it easier to manage the game state for all players.</p>
+
+            <p>Netcode for GameObjects includes a few key features:</p>
+            <ul>
+                <li><strong>NetworkObject</strong>: This represents any object in the game that should be synchronized
+                over the network. It handles object spawning, despawning, and ownership.</li>
+                <li><strong>NetworkBehaviour</strong>: This is a specialized MonoBehaviour that provides networking
+                capabilities. It offers built-in callbacks for handling network events and allows you to
+                write server-side and client-side code.</li>
+                <li><strong>Remote procedure calls (RPCs)</strong>These send messages and invoke methods on remote
+                instances of your GameObjects using Server and Client RPCs.</li>
+                <li><strong>NetworkVariable</strong>: This is a class that allows you to sync states across the network.</li>
+                <li><strong>NetworkManager</strong>: This is a central component that manages the network state of your
+                game, handling tasks such as connection, disconnection, and scene management.</li>
+            </ul>
+
+            <p>These components work at the application layer to help you implement multiplayer
+            functionality. Netcode for GameObjects is designed to be simple yet powerful, providing the
+            tools needed to create robust and scalable multiplayer games</p>
+
+            <p>In this chapter we will explain and work with all of these elements.</p>
+
+            <h3>Setting up</h3>
             
         </section>
     </main>

@@ -50,7 +50,10 @@
             application runs simultaneously on each player’s device, and each player’s actions are then
             synchronized across the network. </p>
 
-            <p> AÑADIR AQUÍ IMAGEN</p>
+            <figure>
+                <img src="../img/img-1.png" alt="Multiplayer nerwork" style="max-width: 60%;">
+                <figcaption>In networked multiplayer, the same game application runs across multiple devices.</figcaption>
+            </figure>
 
             <p> A typical networked game consists of two main components in its architecture, clients and
             servers: </p>
@@ -70,7 +73,10 @@
             responsive gameplay. Constant synchronization then keeps the game as consistent as possible for
             all players in real-time.</p>
 
-            <p> AÑADIR AQUÍ IMAGEN</p>
+            <figure>
+                <img src="../img/img-2.png" alt="Multiplayer nerwork" style="max-width: 35%;">
+                <figcaption>The client-server architecture.</figcaption>
+            </figure>
             
             <h3>2. UDP Packets</h3>
 
@@ -85,7 +91,10 @@
             protocol-specific sections, each with their own headers and payloads. In networking
             terminology, this nesting is known as <strong>encapsulation</strong>.</p>
 
-            <p> IMAGEN DE PAQUETE</p>
+            <figure>
+                <img src="../img/img-3.png" alt="Multiplayer nerwork" style="max-width: 30%;">
+                <figcaption>Simplification of a UDP packet.</figcaption>
+            </figure>
 
             <p>The IP and UDP headers are of a fixed size and contain important metadata like the address of the
             sender and receiver (IP address and ports). The payload varies in size, structure, and content,
@@ -130,7 +139,10 @@
             bandwidth and processing power. It’s typically constrained by the client’s network capabilities
             and computing resources.</p>
 
-            <p>AÑADIR IMAGEN</p>
+            <figure>
+                <img src="../img/img-4.png" alt="Multiplayer nerwork" style="max-width: 50%;">
+                <figcaption>Tick rate versus update rate.</figcaption>
+            </figure>
 
             <p>A higher tick rate can improve the game’s responsiveness but may strain server resources.
             Similarly, a higher update rate enhances interaction smoothness at the expense of greater
@@ -153,7 +165,10 @@
             first-person shooter games perform best with less than 100ms of latency, whereas real-time
             strategy games might allow higher latency values of up to 500 ms.</p>
             
-            <p> AÑADIR IMAGEN</p>
+            <figure>
+                <img src="../img/img-5.png" alt="Multiplayer nerwork" style="max-width: 50%;">
+                <figcaption>Round-trip time is a gauge of network latency.</figcaption>
+            </figure>
 
             <p> Lower latency produces a responsive experience for the player. Ideally, there is minimal delay
             between a user’s action and seeing the expected result in a multiplayer game. High latency
@@ -252,7 +267,10 @@
                 <p>Dedicated servers are particularly well-suited for performance-sensitive, competitive games such as first-person shooters. They can be essential to
                 maintaining fairness and reducing disruptive behavior</p>
 
-                <p>AÑADIR IMAGEN</p>
+                <figure>
+                    <img src="../img/img-2.png" alt="Multiplayer nerwork" style="max-width: 35%;">
+                    <figcaption>A dedicated game server handles all major game simulations.</figcaption>
+                </figure>
 
                 <h5>Client-hosted listen server</h5>
 
@@ -266,7 +284,10 @@
                 in a remote data center. This is because residential internet service providers
                 typically prioritize download performance over upload performance.</p>
 
-                <p>AÑADIR IMAGEN</p>
+                <figure>
+                    <img src="../img/img-6.png" alt="Multiplayer nerwork" style="max-width: 35%;">
+                    <figcaption>A client-hosted listen server acts as both a server and client.</figcaption>
+                </figure>
 
             <h4>Distributed authority</h4>
 
@@ -289,7 +310,10 @@
             <p>Distributed authority is less suitable for games requiring precise simulations or high
             competitiveness but works well for games with less critical interaction needs</p>
             
-            <p>AÑADIR IMAGEN</p>
+            <figure>
+                <img src="../img/img-7.png" alt="Multiplayer nerwork" style="max-width: 35%;">
+                <figcaption>The distributed authority model decentralizes control and game management.</figcaption>
+            </figure>
 
             <h4>Local or couch multiplayer</h4>
 
@@ -313,7 +337,10 @@
             communication protocols to enable data transmission across networks. It’s organized like a
             layered cake:</p>
 
-            <p>AÑADIR IMAGEN</p>
+            <figure>
+                <img src="../img/img-8.png" alt="Multiplayer nerwork" style="max-width: 35%;">
+                <figcaption>The Network stack (source: Wikipedia).</figcaption>
+            </figure>
 
             <p>Each layer only interacts with the layers directly above and below it, providing modularity and
             simplifying network management</p>
@@ -342,7 +369,10 @@
             <p>Generally, you won’t need to worry about the lower layers unless your application has specific
             requirements. This simplifies the network stack to something that looks like this:</p>  
 
-            <p>AÑADIR IMAGEN</p>
+            <figure>
+                <img src="../img/img-9.png" alt="Multiplayer nerwork" style="max-width: 35%;">
+                <figcaption>Netcode development layers.</figcaption>
+            </figure>
         </section>
     </main>
 

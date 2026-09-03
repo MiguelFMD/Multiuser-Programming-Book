@@ -15,20 +15,14 @@ function cargarMenu(rutaBase) {
         <h2>Content</h2>
         <nav>
             <ul>
-                <li><a href="${rutaBase}index.html"><i class="fa-solid fa-bookmark"></i>Chapter 0: Introduction and Workspace</a></li>
-                <li><a href="${rutaBase}contenido/tema-1.html"><i class="fa-solid fa-bookmark"></i>Chapter 1: Introduction to Data Networks</a></li>
-                <li><a href="${rutaBase}contenido/tema-2.html"><i class="fa-solid fa-bookmark"></i>Chapter 2: Netcode for GameObjects</a></li>
-                <li><a href="${rutaBase}contenido/tema-3.html"><i class="fa-solid fa-bookmark"></i>Chapter 3: </a></li>
-                <li><a href="${rutaBase}contenido/tema-4.html"><i class="fa-solid fa-bookmark"></i>Chapter 4: </a></li>
-                <li><a href="${rutaBase}contenido/tema-5.html"><i class="fa-solid fa-bookmark"></i>Chapter 5: </a></li>
+                <li><a href="${rutaBase}index.html"><i class="fa-solid fa-bookmark"></i> Chapter 0: Introduction and Workspace</a></li>
+                <li><a href="${rutaBase}contenido/tema-1.html"><i class="fa-solid fa-bookmark"></i> Chapter 1: Introduction to Data Networks</a></li>
+                <li><a href="${rutaBase}contenido/tema-2.html"><i class="fa-solid fa-bookmark"></i> Chapter 2: Netcode for GameObjects</a></li>
+                <li><a href="${rutaBase}contenido/tema-3.html"><i class="fa-solid fa-bookmark"></i> Chapter 3: </a></li>
+                <li><a href="${rutaBase}contenido/tema-4.html"><i class="fa-solid fa-bookmark"></i> Chapter 4: </a></li>
+                <li><a href="${rutaBase}contenido/tema-5.html"><i class="fa-solid fa-bookmark"></i> Chapter 5: </a></li>
             </ul>
         </nav>
-        <h2>Ejercicios</h2>
-        <ul>
-            <li><a href="${rutaBase}ejercicios/ejercicio-0.html"><i class="fa-solid fa-dumbbell"></i> Exercise 0: Introduction to the repository</a></li>
-            <li><a href="${rutaBase}ejercicios/ejercicio-1.html"><i class="fa-solid fa-dumbbell"></i> Exercise 1: Update project and tasks</a></li>
-            
-            </ul>
     `;
 
     // Inicializamos la lógica del tema una vez inyectado el HTML del menú
