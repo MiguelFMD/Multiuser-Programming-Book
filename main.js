@@ -29,6 +29,7 @@ function cargarMenu(rutaBase) {
                 <li><a href="${rutaBase}ejercicios/ejercicio-2.html"><i class="fa-solid fa-bookmark"></i> Exercise 2: First multiplayer test</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-3.html"><i class="fa-solid fa-bookmark"></i> Exercise 3: Adding Network Behaviour</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-4.html"><i class="fa-solid fa-bookmark"></i> Exercise 4: Adding Spawn Points</a></li>
+                <li><a href="${rutaBase}ejercicios/ejercicio-5.html"><i class="fa-solid fa-bookmark"></i> Exercise 5: Adding trigger collisions</a></li>
             </ul>
         </nav>
     `;
