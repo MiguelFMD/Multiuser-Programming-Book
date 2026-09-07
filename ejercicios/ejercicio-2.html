@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemáticas para videojuegos II</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="clonar-repositorio">
+            <h2 class="section-title">
+                <i class="fa-solid fa-dumbbell"></i> Exercise 2: First multiplayer test
+            </h2>
+
+            <h3>Testing in multiplayer play mode</h3>
+
+            <p>Open Multiplayer Play Mode (Window > Multiplayer Play Mode).</p>
+
+            <figure>
+                <img src="../img/img-11.png" style="max-width: 25%;">
+                <figcaption>The Multiplayer Play Mode window.</figcaption>
+            </figure>
+
+            <p>Then, check at least one additional Virtual Player from the list in the above screenshot, so
+            you can test a minimum of one host and client. Remember that the host is a client that is also
+            running on the server.</p>
+
+            <p>When entering Play mode, a second session of the application starts running in a cloned
+            window: </p>
+
+            <ol>
+                <li>Select the NetworkManager in the Hierarchy. Under Start Connection in the Inspector, select
+                Start Host. The PlayerArmature_Networked object appears in the Game view.</li>
+                <li>Use the Layout button in the second window to enable the Inspector and Hierarchy – much
+                like a second session of the Editor. Select the user interface components to enable and press
+                Apply.</li>
+                <li>In the cloned Editor window, locate the NetworkManager under DontDestroyOnLoad in the
+                Hierarchy.</li>
+                <li>In the Inspector pane, under Start Connection, select Start Client.</li>
+                <li>Two instances of PlayerArmature_Networked now appear in the Hierarchy. In the Scene view,
+                they appear on top of one another. Using the keyboard or gamepad, move one player instance
+                away from the other to separate them.</li>
+                <li>Select a PlayerArmature_Networked instance in the Hierarchy to inspect its NetworkObject
+                component.</li>
+                <li>At runtime, note how each instance is identified by its GlobalObjectIdHash (project asset ID)
+                together with its NetworkObjectId (unique instance index). Below that, the OwnerClientId
+                indicates whether the host or the client controls the instance.</li>
+                <li>Switch between the two instances to compare the flags: IsSpawned, IsLocalPlayer, IsOwner,
+                IsOwnerByServer, etc.</li>
+                <li>Use the Network Visualization panel to distinguish between the two instances more clearly.
+                This handy diagnostic tool appears in the Scene view once you’ve installed the Multiplayer
+                Tools package.</li>
+                <li>The two instances are color coded by Bandwidth (how much data is being transmitted) or
+                Ownership (which client has authority over the Player NetworkObject).</li>
+            </ol>
+
+            <p>Though the NetworkManager creates separate instances for each client, each independently
+            controls the same character. In the Scene view, the character movements driven by WASD
+            controls are not synchronized between the client and host.</p>
+
+            <p>Although the NetworkManager initially synchronizes their positions at coordinates (0, 0, 0)
+            when players first connect, their subsequent movements are not. These are single-player components. To make these work in a multiplayer application, we need
+            to add some networked scripting. </p>
+
+            <h3>Creating your own UI start buttons</h3>
+
+            <p>To create a more user-friendly way to start network sessions at runtime, you can add
+            onscreen buttons that replicate the functionality of the NetworkManager’s Inspector
+            buttons. This can be achieved using either Unity UI (UGUI) or UI Toolkit.</p>
+
+            <p>In your UI of choice, create three buttons labeled Client, Host, and Server. Then, have
+            them invoke these respective callbacks from the NetworkManager singleton:</p>
+
+            <ul>
+                <li>NetworkManager.Singleton.StartClient</li>
+                <li>NetworkManager.Singleton.StartHost</li>
+                <li>NetworkManager.Singleton.StartServer</li>
+            </ul>
+
+            <p>These callbacks allow you to start the network session without using the buttons from the
+            Inspector window.</p>
+            
+            <h3>Testing with the first build</h3>
+
+            <p>To test your Unity 6 Netcode for GameObjects (NGO) game with multiple standalone builds running locally, follow these steps:</p>
+
+            <h4>Enable Windowed Mode and Background Running</h4>
+
+            <p>In Unity, navigate to Edit>Project Settings>Player. Under the Resolution and Presentation section:</p>
+            
+            <ol>
+                <li>Set Fullscreen Mode to Windowed.</li>
+                <li>Uncheck Resizable Window or leave it enabled depending on preference, but ensure standard non-exclusive windowing is active.</li>
+                <li>Under the Resolution tab, enable Run In Background so instances keep processing network packets even when they lose window focus.</li>
+            </ol>
+
+            <h4>Build the Executable</h4>
+
+            <p>Go to File - Build Profiles (or File - Build Settings):</p>
+
+            <ol>
+                <li>Make sure your startup scene is included and checked at index 0.</li>
+                <li>Ensure your target platform matches your OS (Windows, macOS, or Linux).</li>
+                <li>Click Build, create a designated output folder (e.g., Builds/), and export the executable.</li>
+            </ol>
+
+            <h4>Launch the Instances</h4>
+
+            <ol>
+                <li>Double-click the generated executable directly from your file explorer to open the first instance. Once the application window opens, trigger the Host action (StartHost).</li>
+                <li>Without closing the first window, double-click the same executable file again to launch a second independent process (repeat for additional clients as needed).
+                    On the new window, trigger the Client action (StartClient).
+                </li>
+            </ol>
+                
+            
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+    </script>
+</body>
+</html>

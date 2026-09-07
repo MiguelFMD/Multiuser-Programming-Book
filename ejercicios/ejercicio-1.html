@@ -57,34 +57,27 @@
 
             <h3>Creating a Player NetworkObject</h3>
 
-            <p>Load up the Playground scene from the sample project.</p>
-
-            <p>The Hierarchy includes a PlayerArmature that drives the game character. To convert this into
-            a Player NetworkObject, drag it from the Hierarchy to create a new Original Prefab or modify a
-            copy of the existing prefab in the project.</p>
-
-            <p>In the Hierarchy window, locate the PlayerArmature GameObject. Delete it to remove the
-            PlayerArmature and its child objects from the scene, leaving only the game environment in the
-            scene.</p>
-
-            <p>Then, edit the prefab in the Inspector. Add the NetworkObject component. This component is
-            required for the object to be recognized and managed across the network.</p>
-
-            <p>Register the Player NetworkObject in the Player Prefab field of the NetworkManager</p>
-
-            <p>Play mode only shows the game environment. The Player NetworkObject will only appear
-            when a client connects. </p>
-
-            <p>Select the NetworkManager, which now appears under DontDestroyOnLoad in the Hierarchy.</p>
-
-            <p>Select Start Host. This spawns the Player NetworkedObject</p>
-
-            <p>The PlayerArmature_Network object appears in the Hierarchy. The game is playable once
+            <ol>
+                <li>Load up the Playground scene from the sample project.</li> 
+                <li>The Hierarchy includes a PlayerArmature that drives the game character. To convert this into
+                    a Player NetworkObject, drag it from the Hierarchy to create a new Original Prefab or modify a
+                    copy of the existing prefab in the project.</li>
+                <li>In the Hierarchy window, locate the PlayerArmature GameObject. Delete it to remove the
+                    PlayerArmature and its child objects from the scene, leaving only the game environment in the
+                    scene.</li>
+                <li>Then, edit the prefab in the Inspector. Add the NetworkObject component. This component is
+                    required for the object to be recognized and managed across the network.</li>
+                <li>Register the Player NetworkObject in the Player Prefab field of the NetworkManager.Play mode only shows the game environment. The Player NetworkObject will only appear
+            when a client connects.</li>
+                <li>Select the NetworkManager, which now appears under DontDestroyOnLoad in the Hierarchy.</li>
+                <li>Select Start Host. This spawns the Player NetworkedObject</li>
+                <li>The PlayerArmature_Network object appears in the Hierarchy. The game is playable once
             again (though the camera target is disabled). Use the WASD controls to test the player
-            movement.</p>
-
-            <p>Exit Play mode and the player character disappears. The NetworkManager now spawns and
-            manages this specific player character at runtime.</p>
+            movement.</li>
+                <li>Exit Play mode and the player character disappears. The NetworkManager now spawns and
+            manages this specific player character at runtime.</li>
+                
+            </ol>
 
             <p>Keep in mind that the networked aspect of the game won’t be apparent until you have multiple
             clients connected. We’ll need to test with several clients to understand how this works in a
