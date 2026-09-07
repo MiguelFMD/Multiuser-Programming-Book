@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemáticas para videojuegos II</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Soporte adicional para C# y C++ si lo necesitas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="network behaviour">
+            <h2 class="section-title">
+                <i class="fa-solid fa-dumbbell"></i> Exercise 4: Adding Spawn points
+            </h2>
+
+            <p>To manage this, define some objects with some simple visuals and then scatter them where
+            you want players potentially to spawn.</p>
+
+            <p>A non-networked MonoBehaviour can manage them. Here, the ServerPlayerSpawnPoints
+            class contains a list called m_SpawnPoints that references each spawn point GameObject.</p>
+
+            <pre><code class="language-csharp">
+public class ServerPlayerSpawnPoints : Singleton<ServerPlayerSpawnPoints>
+{
+    [SerializeField]
+    private List<GameObject> m_SpawnPoints;
+    public GameObject GetRandomSpawnPoint()
+    {
+        if (m_SpawnPoints.Count == 0)
+            return null;
+        return m_SpawnPoints[Random.Range(0, m_SpawnPoints.Count)];
+    }
+}
+
+            </code></pre>
+
+            <p>A NetworkBehaviour called ServerPlayerMove can then use the instance of
+            ServerPlayerSpawnPoints to pick a spawn point at random. </p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode;
+using UnityEngine;
+[DefaultExecutionOrder(0)] // Execute before ClientNetworkTransform
+public class ServerPlayerMove : NetworkBehaviour
+{
+    public override void OnNetworkSpawn()
+    {
+        // Only execute on the Server
+        if (!IsServer)
+        {
+            enabled = false;
+            return;
+        }
+        SpawnPlayer();
+        base.OnNetworkSpawn();
+    }
+
+    // Move to the next available position when spawning
+    void SpawnPlayer()
+    {
+        var spawnPoint = ServerPlayerSpawnPoints.Instance.GetRandomSpawnPoint();
+        var spawnPosition = spawnPoint ? spawnPoint.transform.position : Vector3.zero;
+        transform.position = spawnPosition;
+    }
+}
+
+            </code></pre>
+
+
+            <p>All of the logic happens in OnNetworkSpawn. Every time a client connects, a call to
+            SpawnPlayer starts the player at a randomly selected spawn. The IsServer check makes
+            sure that this only happens on the server, which maintains the authoritative game state.</p>
+
+            <p>Add the ServerPlayerMove script to the PlayerArmature_Networked prefab. When you
+            enter Multiplayer Play Mode, each client will connect and spawn at a random point within the
+            playground environment.</p>
+
+            <p>This implementation shows how NetworkBehaviours can interact with elements in the scene
+            that aren’t network-controlled. Here, it leverages static data and scene objects already set up
+            in the Hierarchy. </p>
+
+            <p>When a client connects, the ServerPlayerMove only needs to retrieve one random spawn
+            point from the existing gameplay scene. This limits the amount of data transmitted over the
+            network.</p>
+
+            <p>Some important points:</p>
+
+            <ul>
+                <li>Because the ClientNetworkTransform is owner authoritative, it’s important to disable the
+                CharacterController component during Awake. Re-enable the CharacterController after
+                ServerPlayerMove positions the player to prevent it from overriding the calculated
+                values and resetting to world center.</li>
+                <li>Likewise, fill out the m_SpawnPoints in the Inspector to prevent the players from
+                spawning at (0,0,0).</li>
+                <li>Set the DefaultExecutionOrder attribute with a lower value to ensure that
+                ServerPlayerMove executes before ClientPlayerMove. For example, using
+                [DefaultExecutionOrder(0)] prioritizes ServerPlayerMove, allowing it to run
+                first.</li>
+            </ul>
+
+            <p>Our multiplayer project now has the capability of connecting multiple clients to a host. In the
+            game, third-person player characters are able to spawn at designated positions within the
+            level and synchronize their movements and animations in real-time.</p>
+
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
