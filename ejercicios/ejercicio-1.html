@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemáticas para videojuegos II</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="clonar-repositorio">
+            <h2 class="section-title">
+                <i class="fa-solid fa-dumbbell"></i> Exercise 1: The first multiplayer scene
+            </h2>
+
+            <h3>Adding the Network Manager</h3>
+
+            <p>To add a NetworkManager to your scene, create a new GameObject in the Hierarchy and add
+            the NetworkManager component (Netcode > NetworkManager).</p>
+
+            <p>Save the scene and go to File > Build Settings and make sure your current scene is added to
+            the Scenes in Build list. This ensures the new NetworkManager is included in the game build.</p>
+
+            <h3>Creating a Player NetworkObject</h3>
+
+            <p>Load up the Playground scene from the sample project.</p>
+
+            <p>The Hierarchy includes a PlayerArmature that drives the game character. To convert this into
+            a Player NetworkObject, drag it from the Hierarchy to create a new Original Prefab or modify a
+            copy of the existing prefab in the project.</p>
+
+            <p>In the Hierarchy window, locate the PlayerArmature GameObject. Delete it to remove the
+            PlayerArmature and its child objects from the scene, leaving only the game environment in the
+            scene.</p>
+
+            <p>Then, edit the prefab in the Inspector. Add the NetworkObject component. This component is
+            required for the object to be recognized and managed across the network.</p>
+
+            <p>Register the Player NetworkObject in the Player Prefab field of the NetworkManager</p>
+
+            <p>Play mode only shows the game environment. The Player NetworkObject will only appear
+            when a client connects. </p>
+
+            <p>Select the NetworkManager, which now appears under DontDestroyOnLoad in the Hierarchy.</p>
+
+            <p>Select Start Host. This spawns the Player NetworkedObject</p>
+
+            <p>The PlayerArmature_Network object appears in the Hierarchy. The game is playable once
+            again (though the camera target is disabled). Use the WASD controls to test the player
+            movement.</p>
+
+            <p>Exit Play mode and the player character disappears. The NetworkManager now spawns and
+            manages this specific player character at runtime.</p>
+
+            <p>Keep in mind that the networked aspect of the game won’t be apparent until you have multiple
+            clients connected. We’ll need to test with several clients to understand how this works in a
+            multiplayer scene.</p>
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+    </script>
+</body>
+</html>

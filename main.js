@@ -25,6 +25,7 @@ function cargarMenu(rutaBase) {
         <h2>Exercises</h2>
             <ul>
                 <li><a href="${rutaBase}ejercicios/ejercicio-0.html"><i class="fa-solid fa-bookmark"></i> Exercise 0: Setting up the project</a></li>
+                <li><a href="${rutaBase}ejercicios/ejercicio-1.html"><i class="fa-solid fa-bookmark"></i> Exercise 1: The first multiplayer scene</a></li>
             </ul>
         </nav>
     `;
