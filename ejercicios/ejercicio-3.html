@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemáticas para videojuegos II</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Soporte adicional para C# y C++ si lo necesitas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="network behaviour">
+            <h2 class="section-title">
+                <i class="fa-solid fa-dumbbell"></i> Exercise 3: Adding Network Behaviour
+            </h2>
+
+            <h3>Adding ClientPlayerMode</h3>
+
+           <p>To manage the MonoBehaviours on the PlayerArmature_Networked, we can use a
+            NetworkBehaviour.</p>
+
+            <p>We can implement a NetworkBehaviour called ClientPlayerMove to manage the player
+            movement. This can make sure that input from the host and the client only works on their
+            respective player objects. Here’s the example setup:</p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode;
+using StarterAssets;
+using UnityEngine;
+using UnityEngine.InputSystem;
+namespace NetcodeDemo
+{
+    public class ClientPlayerMove: NetworkBehaviour
+    {
+        [SerializeField]
+        CharacterController m_CharacterController;
+        [SerializeField]
+        ThirdPersonController m_ThirdPersonController;
+        [SerializeField]
+        PlayerInput m_PlayerInput;
+        [SerializeField]
+        Transform m_CameraFollow;
+
+        private void Awake()
+        {
+            m_PlayerInput.enabled = false;
+            m_ThirdPersonController.enabled = false;
+            m_CharacterController.enabled = false;
+        }
+
+        public override void OnNetworkSpawn()
+        {
+            base.OnNetworkSpawn();
+            enabled = IsClient; // Enable if this is a client.
+            if (!IsOwner)
+            {
+                // Disable if this is not the owner
+                enabled = false;
+                m_PlayerInput.enabled = false;
+                m_CharacterController.enabled = false;
+                m_ThirdPersonController.enabled = false;
+                return;
+            }
+
+            // Enable if this is an owner
+            m_PlayerInput.enabled = true;
+            m_CharacterController.enabled = true;
+            m_ThirdPersonController.enabled = true;
+
+        }
+    }
+}
+
+            </code></pre>
+
+            <p>Add this to the PlayerArmature_Networked prefab. Then fill out the appropriate fields in the
+            Inspector.</p>
+
+            <figure>
+                <img src="../img/img-12.png" style="max-width: 40%;">
+                <figcaption>Fill out the ClientPlayerMove fields in the Inspector.</figcaption>
+            </figure>
+
+            <p>Once this script is applied to the prefab, connect the host and client sessions. When clients
+            connect to the NetworkManager, certain components of the player object are disabled by default
+            due to the IsOwner property, which checks if the local player is the owner of the instance.</p>
+
+            <p>In the Hierarchy, toggle the selection between the two instances of PlayerArmature_
+            Networked.</p>
+
+            <p>Note how several components (like the PlayerInput) now appear deactivated on player
+            instances not owned by the respective client. For the host, this setup allows control over one
+            of the player instances, and for the client, control over the other.</p>
+
+            <p>However, though we can control different player instances, their movements are not
+            synchronized across the network. To make the movement match from host to client, we’ll need
+            to add additional network components like NetworkTransform.</p>
+
+            <h3>Adding NetworkTransform and NetworkAnimator</h3>
+
+            <p>Add a NetworkTransform component to the PlayerArmature_Networked prefab. Uncheck any
+            axes which won’t affect gameplay; in this case, uncheck all scales, as well as x rotation and z
+            rotation axes. Because synchronization uses bandwidth, it’s essential to minimize syncing any
+            superfluous data.</p>
+
+            <p>Next add the NetworkAnimator component to the PlayerAramature_Networked. Drag the
+            existing Animator component into the empty field.</p>
+
+            <p>The client window represents a second machine that is connected to the host. Ideally, any
+            actions performed on the host are reflected on the client and vice versa.</p>
+
+            <p>The NetworkTransform allows you to sync the position, rotation, and scale of a Transform,
+            while the NetworkAnimator syncs the animation states. Now when your host player runs around
+            the playground environment, its movements transfer to the client in Multiplayer Play Mode.</p>
+
+            <h4>Adding ClientNetworkTransform and ClientNetworkAnimator</h4>
+
+            <p>To implement this behavior, we can create a ClientNetworkTransform component, as seen in
+            the following code example, that switches the server authority for owner authority:</p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode.Components;
+using UnityEngine;
+namespace NetcodeDemo
+{
+    [DisallowMultipleComponent]
+    public class ClientNetworkTransform : NetworkTransform
+    {
+        protected override bool OnIsServerAuthoritative()
+        {
+            return false;
+        }
+    }
+}
+
+            </code></pre>
+
+            <p>This overrides the OnIsServerAuthoritative method and returns false. On
+            the Player NetworkObject prefab, replace the NetworkTransform with the custom
+            ClientNetworkTransform.</p>
+
+            <p>Similarly, we can also create a client-driven NetworkAnimator:</p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode.Components;
+using UnityEngine;
+namespace NetcodeDemo
+{
+    [DisallowMultipleComponent]
+    public class ClientNetworkAnimator: NetworkAnimator
+    {
+        protected override bool OnIsServerAuthoritative()
+        {
+            return false;
+        }
+    }
+}
+
+            </code></pre>
+
+            <p>Replace the NetworkAnimator with the ClientNetworkAnimator. Remember to set the
+            Animator field in the Inspector.</p>
+
+            <p>In Multiplayer Play Mode, you can now move the player from the client and its position and
+            animation states should sync properly to the host.</p>
+
+            <h3>Syncing with Server authority - Adding spawn points</h3>
+
+            <p>To manage this, define some objects with some simple visuals and then scatter them where
+            you want players potentially to spawn.</p>
+
+            <p>A non-networked MonoBehaviour can manage them. Here, the ServerPlayerSpawnPoints
+            class contains a list called m_SpawnPoints that references each spawn point GameObject.</p>
+
+            <pre><code class="language-csharp">
+public class ServerPlayerSpawnPoints : Singleton<ServerPlayerSpawnPoints>
+{
+    [SerializeField]
+    private List<GameObject> m_SpawnPoints;
+    public GameObject GetRandomSpawnPoint()
+    {
+        if (m_SpawnPoints.Count == 0)
+            return null;
+        return m_SpawnPoints[Random.Range(0, m_SpawnPoints.Count)];
+    }
+}
+
+            </code></pre>
+
+            <p>A NetworkBehaviour called ServerPlayerMove can then use the instance of
+            ServerPlayerSpawnPoints to pick a spawn point at random. </p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode;
+using UnityEngine;
+[DefaultExecutionOrder(0)] // Execute before ClientNetworkTransform
+public class ServerPlayerMove : NetworkBehaviour
+{
+    public override void OnNetworkSpawn()
+    {
+        // Only execute on the Server
+        if (!IsServer)
+        {
+            enabled = false;
+            return;
+        }
+        SpawnPlayer();
+        base.OnNetworkSpawn();
+    }
+
+    // Move to the next available position when spawning
+    void SpawnPlayer()
+    {
+        var spawnPoint = ServerPlayerSpawnPoints.Instance.GetRandomSpawnPoint();
+        var spawnPosition = spawnPoint ? spawnPoint.transform.position : Vector3.zero;
+        transform.position = spawnPosition;
+    }
+}
+
+            </code></pre>
+
+
+            <p>All of the logic happens in OnNetworkSpawn. Every time a client connects, a call to
+            SpawnPlayer starts the player at a randomly selected spawn. The IsServer check makes
+            sure that this only happens on the server, which maintains the authoritative game state.</p>
+
+            <p>Add the ServerPlayerMove script to the PlayerArmature_Networked prefab. When you
+            enter Multiplayer Play Mode, each client will connect and spawn at a random point within the
+            playground environment.</p>
+
+            <p>This implementation shows how NetworkBehaviours can interact with elements in the scene
+            that aren’t network-controlled. Here, it leverages static data and scene objects already set up
+            in the Hierarchy. </p>
+
+            <p>When a client connects, the ServerPlayerMove only needs to retrieve one random spawn
+            point from the existing gameplay scene. This limits the amount of data transmitted over the
+            network.</p>
+
+            <p>Some important points:</p>
+
+            <ul>
+                <li>Because the ClientNetworkTransform is owner authoritative, it’s important to disable the
+                CharacterController component during Awake. Re-enable the CharacterController after
+                ServerPlayerMove positions the player to prevent it from overriding the calculated
+                values and resetting to world center.</li>
+                <li>Likewise, fill out the m_SpawnPoints in the Inspector to prevent the players from
+                spawning at (0,0,0).</li>
+                <li>Set the DefaultExecutionOrder attribute with a lower value to ensure that
+                ServerPlayerMove executes before ClientPlayerMove. For example, using
+                [DefaultExecutionOrder(0)] prioritizes ServerPlayerMove, allowing it to run
+                first.</li>
+            </ul>
+
+            <p>Our multiplayer project now has the capability of connecting multiple clients to a host. In the
+            game, third-person player characters are able to spawn at designated positions within the
+            level and synchronize their movements and animations in real-time.</p>
+
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+        hljs.highlightAll();
+    </script>
+</body>
+</html>

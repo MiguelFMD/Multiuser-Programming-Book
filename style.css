@@ -241,7 +241,7 @@ main li {
 
 /* Bloques de Código */
 pre {
-    background-color: var(--code-bg);
+    /* background-color: var(--code-bg); */
     border: 1px solid var(--code-border);
     border-radius: 6px;
     padding: 1.25rem;
