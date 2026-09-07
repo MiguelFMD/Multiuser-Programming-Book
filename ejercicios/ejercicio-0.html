@@ -47,12 +47,49 @@
                 <i class="fa-solid fa-dumbbell"></i> Exercise 0: Setting up the project
             </h2>
 
-            <p>Aqui se explica como crear el repositorio y el proyecto de unity con algunos
-                de los paquetes necesarios
-            </p>
+            <h3>Before you begin</h3>
+                <p>Make sure you have the following:  </p>
+                <ul>        
+                    <li>An active Unity account with a valid license</li>
+                    <li>The Unity Hub</li>
+                    <li>A supported version of the Unity Editor; some features demonstrated here require
+                    Unity 6 or higher, refer to the <a href="https://docs.unity3d.com/Packages/com.unity.netcode.gameobjects@2.13/manual/index.html"
+                    >Netcode for GameObjects requirements</a> </li>
+                    <li>A connection to the Unity Cloud dashboard to connect to the Unity services your
+                    project will need; you can do this via the Unity Hub</li>
+                    <li><a href="https://docs.unity3d.com/Packages/com.unity.netcode.gameobjects@2.13/manual/index.html" target="_blank">
+                    Starter Assets – ThirdPerson package</a></li>
+                </ul>
+            <h3>Installing Netcode for GameObjects</h3>   
             
+            <p>In the Package Manager (Window > Package Manager), filter for the Unity Registry. Then
+            install the following packages: </p>
+            <ul>
+                <li><strong>Netcode for GameObjects</strong>: This is a foundational networking library that adds
+                multiplayer capabilities to the existing GameObject/MonoBehaviour workflow. It
+                streamlines multiplayer game development and is a great starting point for working with
+                networked multiplayer.</li>
+                <li><strong>Multiplayer Tools Window</strong>: This is an extra suite of five new tools introduced in Unity 6
+                that improve workflows for multiplayer development:</li>
+                    <ul>
+                        <li>The Multiplayer Tools Window provides convenient access to all of the multiplayer
+                        tools and their documentation in one place.</li>
+                        <li>The Network Simulator replicates real-world network conditions, such as packet
+                        delay, loss, and disconnections to identify potential issues before going live.</li>
+                        <li>The Runtime Network Stats Monitor (RNSM) displays real-time network statistics,
+                        providing configurable onscreen monitoring of network performance.</li>
+                        <li> Network Scene Visualization enhances debugging by visually displaying network
+                        activity and object ownership in the scene view.</li>
+                        <li>The Hierarchy Network Debug view provides an overlay on the right-hand side of
+                        your Hierarchy window that identifies which objects are networked (with a small
+                        network cube logo).</li>
+                    </ul>
+                <li><strong>Multiplayer Play Mode</strong>: This Unity 6 package enables you to test multiplayer functionality
+                without leaving the Unity Editor. You can simulate up to four players (the Main Editor
+                Player plus three Virtual Players) for faster playtesting.</li>
+            </ul>
         </section> 
-    </main>
+    </main> 
 
     <script src="../main.js"></script>
     <script>

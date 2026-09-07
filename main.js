@@ -22,6 +22,10 @@ function cargarMenu(rutaBase) {
                 <li><a href="${rutaBase}contenido/tema-4.html"><i class="fa-solid fa-bookmark"></i> Chapter 4: </a></li>
                 <li><a href="${rutaBase}contenido/tema-5.html"><i class="fa-solid fa-bookmark"></i> Chapter 5: </a></li>
             </ul>
+        <h2>Exercises</h2>
+            <ul>
+                <li><a href="${rutaBase}ejercicios/ejercicio-0.html"><i class="fa-solid fa-bookmark"></i> Exercise 0: Setting up the project</a></li>
+            </ul>
         </nav>
     `;
 
