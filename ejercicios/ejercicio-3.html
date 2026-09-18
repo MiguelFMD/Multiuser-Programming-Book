@@ -142,6 +142,9 @@ namespace NetcodeDemo
             <p>Next add the NetworkAnimator component to the PlayerAramature_Networked. Drag the
             existing Animator component into the empty field.</p>
 
+            <p>Finally change the Authority Mode to Owner, so the client (the owner) has permission to send updates to the server.
+                You need to change it both on the NetworkTransform and NetworkAnimator.</p>
+
             <p>The client window represents a second machine that is connected to the host. Ideally, any
             actions performed on the host are reflected on the client and vice versa.</p>
 
@@ -149,56 +152,34 @@ namespace NetcodeDemo
             while the NetworkAnimator syncs the animation states. Now when your host player runs around
             the playground environment, its movements transfer to the client in Multiplayer Play Mode.</p>
 
-            <h4>Adding ClientNetworkTransform and ClientNetworkAnimator</h4>
-
-            <p>To implement this behavior, we can create a ClientNetworkTransform component, as seen in
-            the following code example, that switches the server authority for owner authority:</p>
-
-            <pre><code class="language-csharp">
-using Unity.Netcode.Components;
-using UnityEngine;
-namespace NetcodeDemo
-{
-    [DisallowMultipleComponent]
-    public class ClientNetworkTransform : NetworkTransform
-    {
-        protected override bool OnIsServerAuthoritative()
-        {
-            return false;
-        }
-    }
-}
-
-            </code></pre>
-
-            <p>This overrides the OnIsServerAuthoritative method and returns false. On
-            the Player NetworkObject prefab, replace the NetworkTransform with the custom
-            ClientNetworkTransform.</p>
-
-            <p>Similarly, we can also create a client-driven NetworkAnimator:</p>
-
-            <pre><code class="language-csharp">
-using Unity.Netcode.Components;
-using UnityEngine;
-namespace NetcodeDemo
-{
-    [DisallowMultipleComponent]
-    public class ClientNetworkAnimator: NetworkAnimator
-    {
-        protected override bool OnIsServerAuthoritative()
-        {
-            return false;
-        }
-    }
-}
-
-            </code></pre>
-
-            <p>Replace the NetworkAnimator with the ClientNetworkAnimator. Remember to set the
-            Animator field in the Inspector.</p>
-
             <p>In Multiplayer Play Mode, you can now move the player from the client and its position and
             animation states should sync properly to the host.</p>
+
+            <p>Probably you'll have a NullReference exeption on line 379 and 388 on ThirdPersonController script, that is because when the
+                other player moves or jumps, OnFootStep and OnLand are called also (and that's perfect because we want to hear the steps of
+                the other player). In orther to keep this working and also remove the error, change those functions for these ones:
+            </p>
+            <pre><code class="language-csharp">
+private void OnFootstep(AnimationEvent animationEvent)
+{
+    if (animationEvent.animatorClipInfo.weight > 0.5f)
+    {
+        if (FootstepAudioClips.Length > 0)
+        {
+            var index = Random.Range(0, FootstepAudioClips.Length);
+            AudioSource.PlayClipAtPoint(FootstepAudioClips[index], transform.position, FootstepAudioVolume);
+        }
+    }
+}
+
+private void OnLand(AnimationEvent animationEvent)
+{
+    if (animationEvent.animatorClipInfo.weight > 0.5f)
+    {
+        AudioSource.PlayClipAtPoint(LandingAudioClip, transform.position, FootstepAudioVolume);
+    }
+}
+        </code>
 
         </section> 
     </main> 
