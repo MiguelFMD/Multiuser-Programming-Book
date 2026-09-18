@@ -20,6 +20,10 @@
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Soporte adicional para C# y C++ si lo necesitas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
             onload="renderMathInElement(document.body, {
                 delimiters: [
@@ -114,8 +118,32 @@
 
             <p>These callbacks allow you to start the network session without using the buttons from the
             Inspector window.</p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode;
+using UnityEngine;
+
+public class UIStartButtons : MonoBehaviour
+{
+    public void OnStartHostClick()
+    {
+        NetworkManager.Singleton.StartHost();
+    }
+
+    public void OnStartServerClick()
+    {
+        NetworkManager.Singleton.StartServer();
+    }
+
+    public void OnStartClientClick()
+    {
+        NetworkManager.Singleton.StartClient();
+    }
+}
+            </code></pre>
+
             
-            <h3>Testing with the first build</h3>
+            <h3>Testing with the first build (optional)</h3>
 
             <p>To test your Unity 6 Netcode for GameObjects (NGO) game with multiple standalone builds running locally, follow these steps:</p>
 
@@ -154,7 +182,8 @@
 
     <script src="../main.js"></script>
     <script>
-        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+        cargarMenu("../");
+        hljs.highlightAll();
     </script>
 </body>
 </html>

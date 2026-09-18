@@ -49,11 +49,13 @@
 
             <h3>Adding the Network Manager</h3>
 
-            <p>To add a NetworkManager to your scene, create a new GameObject in the Hierarchy and add
-            the NetworkManager component (Netcode > NetworkManager).</p>
-
-            <p>Save the scene and go to File > Build Settings and make sure your current scene is added to
-            the Scenes in Build list. This ensures the new NetworkManager is included in the game build.</p>
+            <ul>
+                <li>To add a NetworkManager to your scene, create a new GameObject in the Hierarchy and add
+                the NetworkManager component (Netcode > NetworkManager).</li>
+                <li>In the NetworkManager component, in network settings, put the Unity Transport in Network Transport</li>
+                <li>Save the scene and go to File > Build Settings and make sure your current scene is added to
+                the Scenes in Build list. This ensures the new NetworkManager is included in the game build.</li>
+            </ul>
 
             <h3>Creating a Player NetworkObject</h3>
 
@@ -62,13 +64,15 @@
                 <li>The Hierarchy includes a PlayerArmature that drives the game character. To convert this into
                     a Player NetworkObject, drag it from the Hierarchy to create a new Original Prefab or modify a
                     copy of the existing prefab in the project.</li>
+                <li>To networked objects or anything related to network data, put "PlayerArmature_Networked" in the prefab 
+                    name to recognize it.</li>
                 <li>In the Hierarchy window, locate the PlayerArmature GameObject. Delete it to remove the
                     PlayerArmature and its child objects from the scene, leaving only the game environment in the
                     scene.</li>
-                <li>Then, edit the prefab in the Inspector. Add the NetworkObject component. This component is
+                <li>Then, edit the new prefab in the Inspector. Add the NetworkObject component. This component is
                     required for the object to be recognized and managed across the network.</li>
-                <li>Register the Player NetworkObject in the Player Prefab field of the NetworkManager.Play mode only shows the game environment. The Player NetworkObject will only appear
-            when a client connects.</li>
+                <li>Register the Player NetworkObject in the Player Prefab field of the NetworkManager. If you press play mode, it only shows the game environment. 
+                    The Player NetworkObject will only appear when a client connects.</li>
                 <li>Select the NetworkManager, which now appears under DontDestroyOnLoad in the Hierarchy.</li>
                 <li>Select Start Host. This spawns the Player NetworkedObject</li>
                 <li>The PlayerArmature_Network object appears in the Hierarchy. The game is playable once
