@@ -48,117 +48,97 @@
     <main>
         <section id="network behaviour">
             <h2 class="section-title">
-                <i class="fa-solid fa-dumbbell"></i> Exercise 5: Adding trigger collisions
+                <i class="fa-solid fa-dumbbell"></i> Exercise 4: Adding Spawn points
             </h2>
 
-           <p><strong>Goal</strong>: Let’s start by adding Trigger Colliders to the game level that change color when making
-            contact with a player. They can change one color when one player touches it and another
-            color when a different player touches it.</p>
+            <p>To manage this, define some objects with some simple visuals and then scatter them where
+            you want players potentially to spawn.</p>
 
-            <p>In the scene, create a new GameObject (e.g., a cube). Add a BoxCollider component and
-            enable the IsTrigger option. Create and assign a transparent material to the MeshRenderer
-            (this example uses the URP/Lit shader). Set its initial color to something neutral like white.</p>
-
-            <p>Next, we need to add network synchronization. Let’s use NetworkVariables and RPCs to
-            synchronize the color change across the network.</p>
-
-            <p>We’ll create a NetworkBehaviour called ColorTrigger and attach it to the trigger object. This
-            script will contain a NetworkVariable called m_NetworkColor that contains a Color value.</p>
+            <p>A non-networked MonoBehaviour can manage them. Here, the ServerPlayerSpawnPoints
+            class contains a list called m_SpawnPoints that references each spawn point GameObject.</p>
 
             <pre><code class="language-csharp">
-using UnityEngine;
-using Unity.Netcode;
-public class ColorTrigger : NetworkBehaviour
+public class ServerPlayerSpawnPoints : Singleton<ServerPlayerSpawnPoints>
 {
-    public NetworkVariable<Color> m_NetworkColor = new NetworkVariable<Color>(Color.white);
-    private Material m_InstanceMaterial;
+    [SerializeField]
+    private List<GameObject> m_SpawnPoints;
+    public GameObject GetRandomSpawnPoint()
+    {
+        if (m_SpawnPoints.Count == 0)
+            return null;
+        return m_SpawnPoints[Random.Range(0, m_SpawnPoints.Count)];
+    }
+}
+
+            </code></pre>
+
+            <p>A NetworkBehaviour called ServerPlayerMove can then use the instance of
+            ServerPlayerSpawnPoints to pick a spawn point at random. </p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode;
+using UnityEngine;
+[DefaultExecutionOrder(0)] // Execute before ClientNetworkTransform
+public class ServerPlayerMove : NetworkBehaviour
+{
     public override void OnNetworkSpawn()
     {
-        m_NetworkColor.OnValueChanged += OnColorChanged;
-        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
-        if (meshRenderer != null)
+        // Only execute on the Server
+        if (!IsServer)
         {
-            m_InstanceMaterial = new Material(meshRenderer.material);
-            meshRenderer.material = m_InstanceMaterial;
-            UpdateMaterialColor(m_NetworkColor.Value);
+            enabled = false;
+            return;
         }
+        SpawnPlayer();
+        base.OnNetworkSpawn();
     }
 
-    public override void OnNetworkDespawn()
+    // Move to the next available position when spawning
+    void SpawnPlayer()
     {
-        m_NetworkColor.OnValueChanged -= OnColorChanged;
-    }
-
-    private void OnColorChanged(Color oldColor, Color newColor)
-    {
-        UpdateMaterialColor(newColor);
-    }
-
-    private void UpdateMaterialColor(Color newColor)
-    {
-        if (m_InstanceMaterial != null)
-        {
-            m_InstanceMaterial.SetColor(“_BaseColor”, newColor);
-        }
+        var spawnPoint = ServerPlayerSpawnPoints.Instance.GetRandomSpawnPoint();
+        var spawnPosition = spawnPoint ? spawnPoint.transform.position : Vector3.zero;
+        transform.position = spawnPosition;
     }
 }
 
             </code></pre>
 
-            <p>When a player enters the trigger, this script will toggle the base color property of its material
-            instance. The script uses a NetworkVariable called m_NetworkColor.</p>
 
-            <p>Here’s a breakdown of how this works:</p>
+            <p>All of the logic happens in OnNetworkSpawn. Every time a client connects, a call to
+            SpawnPlayer starts the player at a randomly selected spawn. The IsServer check makes
+            sure that this only happens on the server, which maintains the authoritative game state.</p>
+
+            <p>Add the ServerPlayerMove script to the PlayerArmature_Networked prefab. When you
+            enter Multiplayer Play Mode, each client will connect and spawn at a random point within the
+            playground environment.</p>
+
+            <p>This implementation shows how NetworkBehaviours can interact with elements in the scene
+            that aren’t network-controlled. Here, it leverages static data and scene objects already set up
+            in the Hierarchy. </p>
+
+            <p>When a client connects, the ServerPlayerMove only needs to retrieve one random spawn
+            point from the existing gameplay scene. This limits the amount of data transmitted over the
+            network.</p>
+
+            <p>Some important points:</p>
 
             <ul>
-                <li>This NetworkVariable keeps track of the actual color value and then syncs across all
-                clients. Though the script runs on both the server and the clients, by default, only the
-                server has write permissions to the NetworkVariable. Clients can only read its Color
-                value.</li>
-
-                <li>The OnValueChanged event updates the trigger’s material base color whenever the
-                NetworkVariable changes. The script subscribes to the event in OnNetworkSpawn and
-                unsubscribes in OnNetworkDespawn.
-                </li>
+                <li>Because the ClientNetworkTransform is owner authoritative, it’s important to disable the
+                CharacterController component during Awake. Re-enable the CharacterController after
+                ServerPlayerMove positions the player to prevent it from overriding the calculated
+                values and resetting to world center.</li>
+                <li>Likewise, fill out the m_SpawnPoints in the Inspector to prevent the players from
+                spawning at (0,0,0).</li>
+                <li>Set the DefaultExecutionOrder attribute with a lower value to ensure that
+                ServerPlayerMove executes before ClientPlayerMove. For example, using
+                [DefaultExecutionOrder(0)] prioritizes ServerPlayerMove, allowing it to run
+                first.</li>
             </ul>
 
-            <h3>Adding RPC</h3>
-
-            <p>Append these methods to the TriggerColor script:</p>
-
-            <pre><code class="language-csharp">
-private void OnTriggerEnter(Collider other)
- {
-    NetworkObject networkObject = other.GetComponent<NetworkObject>();
-    if (IsClient && networkObject != null && networkObject.IsOwner)
-    {
-        ChangeColorServerRpc(networkObject.OwnerClientId);
-    }
-}
-
-[Rpc(SendTo.Server)]
- private void ChangeColorServerRpc(ulong playerId)
- {
-    // Simple team system: blue for even, red for odd
-    Color newColor = (playerId % 2 == 0) ? new Color(0, 0, 1, 0.5f) : new Color(1, 0, 0, 0.5f);
-    m_NetworkColor.Value = newColor;
- }
-            </code></pre>
-
-            <p>In a single-player game, you could add the appropriate logic to OnTriggerEnter. However,
-            in a multiplayer game, you typically handle interactions using client-server communication to
-            ensure that all clients remain in sync.</p>
-
-            <p>Instead of setting the m_NetworkColor value directly, OnTriggerEnter checks if the
-            current game instance is a client. If it is, it calls ChangeColorServerRpc and passes in the
-            OwnerClientId.</p>
-
-            <p>This method determines the new color based on the player’s ID (in this example, even ID
-            numbers become blue, while odd IDs become red) and updates the m_NetworkColor value.</p>
-
-            <p>This change is propagated to all connected clients, ensuring every game instance
-            has a consistent view of the game state. When the m_NetworkColor changes, the
-            OnColorChanged method is triggered on all clients, updating the trigger’s material color.</p>
+            <p>Our multiplayer project now has the capability of connecting multiple clients to a host. In the
+            game, third-person player characters are able to spawn at designated positions within the
+            level and synchronize their movements and animations in real-time.</p>
 
         </section> 
     </main> 

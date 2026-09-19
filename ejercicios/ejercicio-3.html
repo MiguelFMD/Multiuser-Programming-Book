@@ -75,7 +75,9 @@ namespace NetcodeDemo
         ThirdPersonController m_ThirdPersonController;
         [SerializeField]
         PlayerInput m_PlayerInput;
-        Transform m_CameraFollow;
+        [Header("Cinemachine")]
+        [Tooltip("The follow target set in the Cinemachine Virtual Camera that the camera will follow")]
+        public GameObject CinemachineCameraTarget;
 
         private void Awake()
         {
@@ -98,6 +100,13 @@ namespace NetcodeDemo
                 return;
             }
 
+            GameObject virtualCameraObject = GameObject.Find("PlayerFollowCamera");
+            if(virtualCameraObject != null)
+            {
+                var vCam3 = virtualCameraObject.GetComponent<Unity.Cinemachine.CinemachineCamera>();
+                if (vCam3 != null) vCam3.Follow = CinemachineCameraTarget.transform;
+            }
+
             // Enable if this is an owner
             m_PlayerInput.enabled = true;
             m_CharacterController.enabled = true;
@@ -106,7 +115,6 @@ namespace NetcodeDemo
         }
     }
 }
-
             </code></pre>
 
             <p>Add this to the PlayerArmature_Networked prefab. Then fill out the appropriate fields in the
@@ -179,7 +187,7 @@ private void OnLand(AnimationEvent animationEvent)
         AudioSource.PlayClipAtPoint(LandingAudioClip, transform.position, FootstepAudioVolume);
     }
 }
-        </code>
+            </code></pre>
 
         </section> 
     </main> 

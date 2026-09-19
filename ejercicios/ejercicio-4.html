@@ -48,97 +48,367 @@
     <main>
         <section id="network behaviour">
             <h2 class="section-title">
-                <i class="fa-solid fa-dumbbell"></i> Exercise 4: Adding Spawn points
+                <i class="fa-solid fa-dumbbell"></i> Exercise 4: Creating a lobby room
             </h2>
+            
+            <h3>Connection Approval</h3>
 
-            <p>To manage this, define some objects with some simple visuals and then scatter them where
-            you want players potentially to spawn.</p>
+            <p>With every new connection, Netcode for GameObjects performs a handshake in addition to handshakes done by 
+            the transport. This ensures that the NetworkConfig on the client matches the server's NetworkConfig. You can 
+            enable ConnectionApproval in the NetworkManager or via code by setting NetworkManager.NetworkConfig.ConnectionApproval 
+            to true. Connection approval allows you to decide, on a per connection basis, whether to allow a connection.</p>
 
-            <p>A non-networked MonoBehaviour can manage them. Here, the ServerPlayerSpawnPoints
-            class contains a list called m_SpawnPoints that references each spawn point GameObject.</p>
-
-            <pre><code class="language-csharp">
-public class ServerPlayerSpawnPoints : Singleton<ServerPlayerSpawnPoints>
-{
-    [SerializeField]
-    private List<GameObject> m_SpawnPoints;
-    public GameObject GetRandomSpawnPoint()
-    {
-        if (m_SpawnPoints.Count == 0)
-            return null;
-        return m_SpawnPoints[Random.Range(0, m_SpawnPoints.Count)];
-    }
-}
-
-            </code></pre>
-
-            <p>A NetworkBehaviour called ServerPlayerMove can then use the instance of
-            ServerPlayerSpawnPoints to pick a spawn point at random. </p>
+            <p>When you set the ConnectionApproval property of the NetworkManager to true, Netcode for GameObjects checks to make sure 
+            the NetworkManager.ConnectionApprovalCallback has been assigned. If assigned, the connection approval process is used for 
+            connecting clients to decide whether to allow a connection or deny it. If you don't assign the 
+            NetworkManager.ConnectionApprovalCallback (even with the NetworkManager.ConnectionApprovalCallback set to true), 
+            Netcode for GameObjects uses basic authentication for the user, which automatically authorizes and assigns the default 
+            player Prefab.</p>
 
             <pre><code class="language-csharp">
-using Unity.Netcode;
 using UnityEngine;
-[DefaultExecutionOrder(0)] // Execute before ClientNetworkTransform
-public class ServerPlayerMove : NetworkBehaviour
+using Unity.Netcode;
+
+/// < summary >
+/// Connection Approval Handler Component
+/// < /summary >
+/// < remarks >
+/// This should be placed on the same GameObject as the NetworkManager.
+/// It automatically declines the client connection for example purposes.
+/// < /remarks >
+public class ConnectionApprovalHandler : MonoBehaviour
 {
-    public override void OnNetworkSpawn()
+    private NetworkManager m_NetworkManager;
+    [SerializeField]
+    private int maxPlayers = 2;
+    private int currentPlayers = 0;
+
+    private void Start()
     {
-        // Only execute on the Server
-        if (!IsServer)
+        m_NetworkManager = GetComponent<NetworkManager>();
+        m_NetworkManager.NetworkConfig.ConnectionApproval = true; //Enable ConnectionApproval
+        if (m_NetworkManager != null)
         {
-            enabled = false;
-            return;
+            m_NetworkManager.OnClientDisconnectCallback += OnClientDisconnectCallback;
+            m_NetworkManager.ConnectionApprovalCallback = ApprovalCheck;
         }
-        SpawnPlayer();
-        base.OnNetworkSpawn();
     }
 
-    // Move to the next available position when spawning
-    void SpawnPlayer()
+    private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
-        var spawnPoint = ServerPlayerSpawnPoints.Instance.GetRandomSpawnPoint();
-        var spawnPosition = spawnPoint ? spawnPoint.transform.position : Vector3.zero;
-        transform.position = spawnPosition;
+        // The client identifier to be authenticated
+        var clientId = request.ClientNetworkId;
+
+        // Additional connection data defined by user code
+        var connectionData = request.Payload;
+
+        // Your approval logic determines the following values
+        if(maxPlayers > currentPlayers)
+        {
+            response.Approved = true;
+            currentPlayers++;
+        }
+        else
+            response.Approved = false;
+        
+        response.CreatePlayerObject = true;
+
+        // The Prefab hash value of the NetworkPrefab, if null the default NetworkManager player Prefab is used
+        response.PlayerPrefabHash = null;
+
+        // Position to spawn the player object (if null it uses default of Vector3.zero)
+        response.Position = Vector3.zero;
+
+        // Rotation to spawn the player object (if null it uses the default of Quaternion.identity)
+        response.Rotation = Quaternion.identity;
+
+        // If response.Approved is false, you can provide a message that explains the reason why via ConnectionApprovalResponse.Reason
+        // On the client-side, NetworkManager.DisconnectReason will be populated with this message via DisconnectReasonMessage
+        response.Reason = "The room is full";
+
+        // If additional approval steps are needed, set this to true until the additional steps are complete
+        // once it transitions from true to false the connection approval response will be processed.
+        response.Pending = false;
+    }
+
+    private void OnClientDisconnectCallback(ulong obj)
+    {
+        if (!m_NetworkManager.IsServer && m_NetworkManager.DisconnectReason != string.Empty)
+        {
+            Debug.Log($"Approval Declined Reason: {m_NetworkManager.DisconnectReason}");
+        }
     }
 }
-
             </code></pre>
 
+            <p>Add this new component to your NetworkManager object. Now when a client tries to connect, the ApprovalCheck checks
+                if the maximum players has been reached but you can add or change whatever logic you want. There is also the possibility
+                to <a href="https://docs.unity3d.com/Packages/com.unity.netcode.gameobjects@2.13/manual/basics/connection-approval.html#changing-the-player-prefab"> 
+                    change the player prefab</a>
+            </p>
 
-            <p>All of the logic happens in OnNetworkSpawn. Every time a client connects, a call to
-            SpawnPlayer starts the player at a randomly selected spawn. The IsServer check makes
-            sure that this only happens on the server, which maintains the authoritative game state.</p>
+            <h3>Using NetworkSceneManager</h3>
 
-            <p>Add the ServerPlayerMove script to the PlayerArmature_Networked prefab. When you
-            enter Multiplayer Play Mode, each client will connect and spawn at a random point within the
-            playground environment.</p>
-
-            <p>This implementation shows how NetworkBehaviours can interact with elements in the scene
-            that aren’t network-controlled. Here, it leverages static data and scene objects already set up
-            in the Hierarchy. </p>
-
-            <p>When a client connects, the ServerPlayerMove only needs to retrieve one random spawn
-            point from the existing gameplay scene. This limits the amount of data transmitted over the
-            network.</p>
-
-            <p>Some important points:</p>
+            <p>The NetworkSceneManager Provides You With:</p>
 
             <ul>
-                <li>Because the ClientNetworkTransform is owner authoritative, it’s important to disable the
-                CharacterController component during Awake. Re-enable the CharacterController after
-                ServerPlayerMove positions the player to prevent it from overriding the calculated
-                values and resetting to world center.</li>
-                <li>Likewise, fill out the m_SpawnPoints in the Inspector to prevent the players from
-                spawning at (0,0,0).</li>
-                <li>Set the DefaultExecutionOrder attribute with a lower value to ensure that
-                ServerPlayerMove executes before ClientPlayerMove. For example, using
-                [DefaultExecutionOrder(0)] prioritizes ServerPlayerMove, allowing it to run
-                first.</li>
+                <li>An existing framework that supports both the bootstrap and scene transitioning scene management usage patterns.</li>
+                <li>Automated client synchronization that occurs when a client is connected and approved.</li>
+                <li>A comprehensive scene event notification system that provides you with a plethora of options</li>
+                <li>In-Scene placed NetworkObject synchronization</li>
             </ul>
 
-            <p>Our multiplayer project now has the capability of connecting multiple clients to a host. In the
-            game, third-person player characters are able to spawn at designated positions within the
-            level and synchronize their movements and animations in real-time.</p>
+            <h4>Accessing NetworkSceneManager</h4>
+
+            <p>The NetworkSceneManager lives within the NetworkManager and is instantiated when the NetworkManager is started. NetworkSceneManager 
+                can be accessed in the following ways:</p>
+
+            <ul>
+                <li>From within a NetworkBehaviour derived component, you can access it by using NetworkManager.SceneManager</li>
+                <li>From anything else that does not already have a reference to NetworkManager, you can access it using NetworkManager.Singleton.SceneManager.</li>
+            </ul>
+
+            <h4>Loading a Scene</h4>
+
+            <p>In order to load a scene, there are four requirements:</p>
+
+            <ul>
+                <li>The NetworkManager instance loading the scene must be a host or server.</li>
+                <li>The NetworkSceneManager.Load method is used to load the scene.</li>
+                <li>The scene being loaded must be registered with your project's build settings scenes in build list</li>
+                <li>A Scene Event can't already be in progress.</li>
+            </ul>
+
+            <h4>Basic Lobby Manager</h4>
+
+            <pre><code class="language-csharp">
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using Unity.Netcode;
+using UnityEngine.InputSystem;
+
+public class LobbyManager : MonoBehaviour
+{
+    private const string GameSceneName = "MainScene";
+
+    void Update()
+    {
+        if(Keyboard.current.gKey.wasPressedThisFrame)
+        {
+            StartGame();
+        }
+    }
+
+    // Starts the main game but only works for the host
+    public void StartGame()
+    {
+
+        if (!NetworkManager.Singleton.IsServer)
+        {
+            Debug.LogWarning("Only the host/server can initiate the game.");
+            return;
+        }
+
+        // Syncronize all clients.
+        SceneEventProgressStatus status = NetworkManager.Singleton.SceneManager.LoadScene(
+            GameSceneName, 
+            LoadSceneMode.Single
+        );
+
+        if (status != SceneEventProgressStatus.Started)
+        {
+            Debug.LogError($"Error trying to load the scene: {status}");
+        }
+    }
+}
+
+            </code></pre>
+
+            <p>Follow these steps to create a custom lobby: </p>
+            
+            <ol>
+                <li>Change the name of your current scene to "MainScene" and duplicate it. Call the new scene "Lobby". Then open it.</li>
+                <li>Create a new empty GameObject, call it <i>Lobby Manager</i> and add the LobbyManager script shown above. This script handles
+                when the game starts and loads the MainScene by pressing keyboard "G". Only the host/server can start the game.</li>
+            </ol>
+
+            
+            <p>We need to make some changes because now the PlayerArmatures_Networked has lost some references when changing the scene (mainly the camera)</p>
+
+            <p>Here is the updated version of ClientPlayerMove and ThirdPersonController</p>
+            
+            <pre><code class="language-csharp">
+using Unity.Netcode;
+using StarterAssets;
+using UnityEngine;
+using UnityEngine.InputSystem;
+namespace NetcodeDemo
+{
+    public class ClientPlayerMove: NetworkBehaviour
+    {
+        [SerializeField]
+        CharacterController m_CharacterController;
+        [SerializeField]
+        ThirdPersonController m_ThirdPersonController;
+        [SerializeField]
+        PlayerInput m_PlayerInput;
+        [Header("Cinemachine")]
+        [Tooltip("The follow target set in the Cinemachine Virtual Camera that the camera will follow")]
+        public GameObject CinemachineCameraTarget;
+        private const string GameSceneName = "MainScene";
+
+        private void Awake()
+        {
+            m_PlayerInput.enabled = false;
+            m_ThirdPersonController.enabled = false;
+            m_CharacterController.enabled = false;
+        }
+
+        public override void OnNetworkSpawn()
+        {
+            base.OnNetworkSpawn();
+            enabled = IsClient; // Enable if this is a client.
+            if (!IsOwner)
+            {
+                // Disable if this is not the owner
+                SetControllers(false);
+                return;
+            }
+            
+            NetworkManager.Singleton.SceneManager.OnSceneEvent += OnSceneEvent; //Suscribe to scene events
+
+            ConfigureLocalCamera();
+
+            // Enable if this is an owner
+            SetControllers(true);
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            if (IsOwner && NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+            {
+                NetworkManager.Singleton.SceneManager.OnSceneEvent -= OnSceneEvent;
+            }
+            base.OnNetworkDespawn();
+        }
+
+        private void OnSceneEvent(SceneEvent sceneEvent)
+        {
+            // When local client finishes loading the scene
+            if (sceneEvent.SceneEventType == SceneEventType.LoadComplete && sceneEvent.ClientId == NetworkManager.Singleton.LocalClientId)
+            {
+                if (sceneEvent.SceneName == GameSceneName)
+                {
+                    enabled = IsClient; // Enable if this is a client.
+                    if (!IsOwner)
+                    {
+                        // Disable if this is not the owner
+                        SetControllers(false);
+                        return;
+                    }
+                    ConfigureLocalCamera();
+                    // Enable if this is an owner
+                    SetControllers(true);
+                }
+            }
+        }
+
+        private void ConfigureLocalCamera()
+        {
+            m_ThirdPersonController.FindMainCamera();
+            GameObject virtualCameraObject = GameObject.Find("PlayerFollowCamera");
+            if(virtualCameraObject != null)
+            {
+                var vCam3 = virtualCameraObject.GetComponent<Unity.Cinemachine.CinemachineCamera>();
+                if (vCam3 != null) vCam3.Follow = CinemachineCameraTarget.transform;
+            }
+        }
+
+        private void SetControllers(bool enable)
+        {
+            if(!enable)
+            {
+                enabled = false;
+                m_PlayerInput.enabled = false;
+                m_CharacterController.enabled = false;
+                m_ThirdPersonController.enabled = false;
+            }
+            else
+            {
+                m_PlayerInput.enabled = true;
+                m_CharacterController.enabled = true;
+                m_ThirdPersonController.enabled = true;
+            }
+        }
+    }
+}
+
+//-----------ThirdPersonController changes--------------
+
+//Change this in line 131
+if (_mainCamera == null)
+{
+    FindMainCamera();
+}
+
+//Add this in line 169
+public void FindMainCamera()
+{
+    _mainCamera = GameObject.FindGameObjectWithTag("MainCamera");
+}
+
+            </code></pre>
+
+            <p>Finally we have to add a MatchManager in order to know when all players have loaded the MainScene.</p>
+
+            <p>Open the MainScene, create an empty object, call it MatchManager and add the following script: </p>
+
+            <pre><code class="language-csharp">
+using UnityEngine;
+using Unity.Netcode;
+
+public class MatchManager : MonoBehaviour
+{
+    private const string GameSceneName = "MainScene";
+    void Start()
+    {
+        NetworkManager.Singleton.SceneManager.OnSceneEvent += HandleSceneEvents;
+    }
+
+     private void OnDestroy()
+    {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.SceneManager != null)
+        {
+            NetworkManager.Singleton.SceneManager.OnSceneEvent -= HandleSceneEvents;
+        }
+    }
+
+    // Handles when the clients are ready
+    private void HandleSceneEvents(SceneEvent sceneEvent)
+    {
+        switch (sceneEvent.SceneEventType)
+        {
+            // When each client and sever have completed the scene load
+            case SceneEventType.LoadComplete:
+                Debug.Log($"The client {sceneEvent.ClientId} has finished loading the scene {sceneEvent.SceneName}.");
+                break;
+
+            // Only fires on server side when ALL connected clients have finished loading the scene
+            case SceneEventType.LoadEventCompleted:
+                if (NetworkManager.Singleton.IsServer && sceneEvent.SceneName == GameSceneName)
+                {
+                    Debug.Log("All players have loaded the scene. The game can begin.");
+                }
+                break;
+        }
+    }
+}
+
+            </code></pre>
+
+            <p>Now we have a lobby that can handle some game rules (like character selection, maximum players...) and a 
+                main game scene where the gameplay occurs.
+            </p>
 
         </section> 
     </main> 

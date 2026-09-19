@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemáticas para videojuegos II</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Soporte adicional para C# y C++ si lo necesitas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="network behaviour">
+            <h2 class="section-title">
+                <i class="fa-solid fa-dumbbell"></i> Exercise 5: Adding trigger collisions
+            </h2>
+
+           <p><strong>Goal</strong>: Let’s start by adding Trigger Colliders to the game level that change color when making
+            contact with a player. They can change one color when one player touches it and another
+            color when a different player touches it.</p>
+
+            <p>In the scene, create a new GameObject (e.g., a cube). Add a BoxCollider component and
+            enable the IsTrigger option. Create and assign a transparent material to the MeshRenderer
+            (this example uses the URP/Lit shader). Set its initial color to something neutral like white.</p>
+
+            <p>Next, we need to add network synchronization. Let’s use NetworkVariables and RPCs to
+            synchronize the color change across the network.</p>
+
+            <p>We’ll create a NetworkBehaviour called ColorTrigger and attach it to the trigger object. This
+            script will contain a NetworkVariable called m_NetworkColor that contains a Color value.</p>
+
+            <pre><code class="language-csharp">
+using UnityEngine;
+using Unity.Netcode;
+public class ColorTrigger : NetworkBehaviour
+{
+    public NetworkVariable<Color> m_NetworkColor = new NetworkVariable<Color>(Color.white);
+    private Material m_InstanceMaterial;
+    public override void OnNetworkSpawn()
+    {
+        m_NetworkColor.OnValueChanged += OnColorChanged;
+        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer != null)
+        {
+            m_InstanceMaterial = new Material(meshRenderer.material);
+            meshRenderer.material = m_InstanceMaterial;
+            UpdateMaterialColor(m_NetworkColor.Value);
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        m_NetworkColor.OnValueChanged -= OnColorChanged;
+    }
+
+    private void OnColorChanged(Color oldColor, Color newColor)
+    {
+        UpdateMaterialColor(newColor);
+    }
+
+    private void UpdateMaterialColor(Color newColor)
+    {
+        if (m_InstanceMaterial != null)
+        {
+            m_InstanceMaterial.SetColor(“_BaseColor”, newColor);
+        }
+    }
+}
+
+            </code></pre>
+
+            <p>When a player enters the trigger, this script will toggle the base color property of its material
+            instance. The script uses a NetworkVariable called m_NetworkColor.</p>
+
+            <p>Here’s a breakdown of how this works:</p>
+
+            <ul>
+                <li>This NetworkVariable keeps track of the actual color value and then syncs across all
+                clients. Though the script runs on both the server and the clients, by default, only the
+                server has write permissions to the NetworkVariable. Clients can only read its Color
+                value.</li>
+
+                <li>The OnValueChanged event updates the trigger’s material base color whenever the
+                NetworkVariable changes. The script subscribes to the event in OnNetworkSpawn and
+                unsubscribes in OnNetworkDespawn.
+                </li>
+            </ul>
+
+            <h3>Adding RPC</h3>
+
+            <p>Append these methods to the TriggerColor script:</p>
+
+            <pre><code class="language-csharp">
+private void OnTriggerEnter(Collider other)
+ {
+    NetworkObject networkObject = other.GetComponent<NetworkObject>();
+    if (IsClient && networkObject != null && networkObject.IsOwner)
+    {
+        ChangeColorServerRpc(networkObject.OwnerClientId);
+    }
+}
+
+[Rpc(SendTo.Server)]
+ private void ChangeColorServerRpc(ulong playerId)
+ {
+    // Simple team system: blue for even, red for odd
+    Color newColor = (playerId % 2 == 0) ? new Color(0, 0, 1, 0.5f) : new Color(1, 0, 0, 0.5f);
+    m_NetworkColor.Value = newColor;
+ }
+            </code></pre>
+
+            <p>In a single-player game, you could add the appropriate logic to OnTriggerEnter. However,
+            in a multiplayer game, you typically handle interactions using client-server communication to
+            ensure that all clients remain in sync.</p>
+
+            <p>Instead of setting the m_NetworkColor value directly, OnTriggerEnter checks if the
+            current game instance is a client. If it is, it calls ChangeColorServerRpc and passes in the
+            OwnerClientId.</p>
+
+            <p>This method determines the new color based on the player’s ID (in this example, even ID
+            numbers become blue, while odd IDs become red) and updates the m_NetworkColor value.</p>
+
+            <p>This change is propagated to all connected clients, ensuring every game instance
+            has a consistent view of the game state. When the m_NetworkColor changes, the
+            OnColorChanged method is triggered on all clients, updating the trigger’s material color.</p>
+
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
