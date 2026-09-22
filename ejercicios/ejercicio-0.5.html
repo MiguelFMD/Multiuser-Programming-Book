@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemáticas para videojuegos II</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="clonar-repositorio">
+            <h2 class="section-title">
+                <i class="fa-solid fa-dumbbell"></i> Exercise 0: GitHup Desktop Workflow Guide
+            </h2>
+
+            <h3>STEP 1: Download the course repository (First time only)</h3>
+               
+                <ul>        
+                    <li>Open GitHub Desktop. </li>
+                    <li>Go to File > Clone Repository... </li>
+                    <li>Choose the <a href=" https://github.com/MiguelFMD/MineCo-op">
+                        class repository</a> and clone it to your computer.</li>
+                </ul>
+            <p>You will need to do this step on every new computer where you want to have the project. </p>
+            
+            <h3>STEP 2: Set up your submission repository </h3>
+
+            <p>Inside the Assets folder you will find the "Students" folder (Assets/Students), if there is no "Students" folder create it.
+            This folder is ignored by the repository, so anything done there will not appear in the repository changes. The problem with this is 
+            that your changes will remain local (on that computer), and if you want to continue your work on another computer, 
+            you won't be able to unless you save those changes.</p>
+
+            <p>To try to solve this, it is proposed to create a repository inside that folder: </p>
+            
+            <ul>
+                <li>In GitHub Desktop, go to File > New Repository... </li>
+                <li>Configure the fields exactly like this: </li>
+                <ul>
+                    <li>Name: YourFirstAndLastName. </li>
+                    <li>Local Path: Click Choose... and select the Assets/Students folder of the class project.
+                        (GitHub Desktop will automatically create the path .../Assets/Students/[FolderName]). 
+                    </li>
+                   <li>In GitIgnore, choose Unity.</li>
+                </ul>
+                <li>Click Create Repository. </li>
+                <li>Click Publish repository in the top right. </li>
+                <li>Leave the "Keep this code private" box checked if you want to keep it private (optional) and click Publish Repository. </li>
+            </ul>
+
+            <p>Now you will have two projects in the dropdown menu at the top left of GitHub Desktop: the Class one and Yours.</p>
+            
+            <h3>How to work day to day?</h3>
+
+            <p>To save your exercises to your personal GitHub:</p>
+
+            <ul>
+                <li>In the top-left dropdown, select your repository. </li>
+                <li>Write a commit title (bottom left) and click Commit to main. </li>
+                <li>Click Push origin to upload it to the cloud. </li>
+            </ul>
+
+            <p>To receive new material from the instructor: </p>
+
+            <ul>
+                <li>In the dropdown, switch to the class repository. </li>
+                <li>Click Fetch origin (or Pull origin if there are changes). 
+                    Your working folder will not be touched, and nothing will be deleted. </li>
+            </ul>
+
+            <h3>What to do if you change computers?</h3>
+
+            <ul>
+                <li>First, clone the class project (File > Clone Repository...). </li>
+                <li>Clone your personal repository (File > Clone Repository...): In Local Path, select the Assets/Students folder of the class project. 
+                    GitHub Desktop will download your files directly into the corresponding ignored folder. </li>
+            </ul>
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+    </script>
+</body>
+</html>

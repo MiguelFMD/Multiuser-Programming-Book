@@ -22,6 +22,7 @@ function cargarMenu(rutaBase) {
         <h2>Exercises</h2>
             <ul>
                 <li><a href="${rutaBase}ejercicios/ejercicio-0.html"><i class="fa-solid fa-bookmark"></i> Exercise 0: Setting up the project</a></li>
+                <li><a href="${rutaBase}ejercicios/ejercicio-0.5.html"><i class="fa-solid fa-bookmark"></i> Exercise 0.5: GitHup Desktop Workflow Guide</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-1.html"><i class="fa-solid fa-bookmark"></i> Exercise 1: The first multiplayer scene</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-2.html"><i class="fa-solid fa-bookmark"></i> Exercise 2: First multiplayer test</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-3.html"><i class="fa-solid fa-bookmark"></i> Exercise 3: Adding Network Behaviour</a></li>
