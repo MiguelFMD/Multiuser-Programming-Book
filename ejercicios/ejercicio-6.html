@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matemáticas para videojuegos II</title>
+    <title>Programming for multi-user and social environments</title>
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -48,118 +48,240 @@
     <main>
         <section id="network behaviour">
             <h2 class="section-title">
-                <i class="fa-solid fa-dumbbell"></i> Exercise 5: Adding trigger collisions
+                <i class="fa-solid fa-dumbbell"></i> Exercise 6: Customize serializable types
             </h2>
 
-           <p><strong>Goal</strong>: Let’s start by adding Trigger Colliders to the game level that change color when making
-            contact with a player. They can change one color when one player touches it and another
-            color when a different player touches it.</p>
+            <p>By the end of this exercise you should have a networked collectable item and player's inventory.</p>
 
-            <p>In the scene, create a new GameObject (e.g., a cube). Add a BoxCollider component and
-            enable the IsTrigger option. Create and assign a transparent material to the MeshRenderer
-            (this example uses the URP/Lit shader). Set its initial color to something neutral like white.</p>
+            <h3>Serializing our own NetworkItem</h3>
 
-            <p>Next, we need to add network synchronization. Let’s use NetworkVariables and RPCs to
-            synchronize the color change across the network.</p>
+            <p>Netcode for GameObjects uses a default serialization pipeline when using RPC's, NetworkVariables, or any other Netcode-related 
+                tasks that require serialization. The serialization pipeline looks like this:
+            Custom types => Built-in types => INetworkSerializable</p>
 
-            <p>We’ll create a NetworkBehaviour called ColorTrigger and attach it to the trigger object. This
-            script will contain a NetworkVariable called m_NetworkColor that contains a Color value.</p>
+            <p>When Netcode for GameObjects first receives a type, it checks for any custom types that you have registered for serialization, 
+                then it checks if it's a built-in type, such as a Vector3 or a float. These are handled by default. Otherwise, it checks if the 
+                type inherits INetworkSerializable, and if it does, it calls its write methods.</p>
+            
+            <p>You can use the INetworkSerializable interface to define custom serializable types. This interface has one function: 
+                NetworkSerialize<T>(BufferSerializer<T> serializer), which ingests a bi-directional BufferSerializer that you can use to 
+                    implement bi-directional custom serialization.</p>
+            
+            <p>INetworkSerializable can be implemented on both managed and unmanaged types, although serializing managed types isn't 
+                recommended because it can reduce your game's performance.</p>
+            
+            <p>Let's implement our own NetworkItem: </p>
+
+            <pre><code class="language-csharp">
+using Unity.Netcode;
+using System;
+
+public struct NetworkItem : INetworkSerializable, IEquatable<NetworkItem>
+{
+    public uint ItemID;
+    public int Amount;
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref ItemID);
+        serializer.SerializeValue(ref Amount);
+    }
+
+    public bool Equals(NetworkItem other)
+    {
+        return ItemID == other.ItemID && Amount == other.Amount;
+    }
+}
+            </code></pre>
+
+            <h3>In-scene placed NetworkObjects</h3>
+
+            <p>In-scene placed NetworkObjects are GameObjects with a NetworkObject component that was added to a scene from within the Editor. 
+            Our items will be in-scene placed NetworkObjects and when they spawn (when the scene is loaded), 
+            we should add the data to each item.</p>
+
+            <h4>The ItemData</h4>
+
+            <p>Let's create our own items data: </p>
+
+            <ol>
+                <li>Create a ScriptableObject (ItemData) that manages the items data.</li>
+                <li>Then create some ItemData and call them "Item_1" and "Item_2" for example. </li>
+                <li>Try use different Mesh and Material so we can see differences in the scene.</li>
+            </ol>
+
+
+            <pre><code class="language-csharp">
+using UnityEngine;
+
+[CreateAssetMenu(fileName = "ItemData", menuName = "Scriptable Objects/ItemData")]
+public class ItemData : ScriptableObject
+{
+    public uint ItemID;
+    public string ItemName;
+    public Mesh mesh;
+    public Material material;
+}
+            </code></pre>
+
+            <h4>The item prefab</h4>
+
+            <p>Now that we have our data, we can create the prefab. Remember, we only need one prefab and the variaty of items should
+                be managed with the ScriptableObjects.
+            </p>
+
+            <ol>
+                <li>Create a CollectableItemComponent script and create (code below)</li>
+                <li>Then create a prefab.</li>
+                <li>Make sure the prefab is inside the DefaultNetworkPrefabsList (in Assets/DefaultNetworkPrefabsList) or in other
+                    NetworkPrefabList that is added to the NetworkManager.
+                </li>
+            </ol>
+
+            <p>In the following code, the function <i>AssignData</i> is called OnNetworkSpawn. When the player enters the trigger, 
+            it calls the PickupItemRpc, only calling from the iventory owner, that tells the server to add the new item to the 
+            PlayerInventory.</p>
 
             <pre><code class="language-csharp">
 using UnityEngine;
 using Unity.Netcode;
-public class ColorTrigger : NetworkBehaviour
+[RequireComponent (typeof(Collider))]
+public class CollectableItemComponent : NetworkBehaviour
 {
-    public NetworkVariable<Color> m_NetworkColor = new NetworkVariable<Color>(Color.white);
-    private Material m_InstanceMaterial;
+    [SerializeField] private ItemData itemData;
+    [SerializeField] private int amount;
+    private Collider colliderComponent;
+
     public override void OnNetworkSpawn()
     {
-        m_NetworkColor.OnValueChanged += OnColorChanged;
-        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
-        if (meshRenderer != null)
-        {
-            m_InstanceMaterial = new Material(meshRenderer.material);
-            meshRenderer.material = m_InstanceMaterial;
-            UpdateMaterialColor(m_NetworkColor.Value);
-        }
+        base.OnNetworkSpawn();
+        AssignData();
+        colliderComponent.isTrigger = true;
     }
-
     public override void OnNetworkDespawn()
     {
-        m_NetworkColor.OnValueChanged -= OnColorChanged;
+        base.OnNetworkDespawn();
+        gameObject.SetActive(false); //Turn off the game object
     }
 
-    private void OnColorChanged(Color oldColor, Color newColor)
+    private void OnTriggerEnter(Collider other)
     {
-        UpdateMaterialColor(newColor);
-    }
-
-    private void UpdateMaterialColor(Color newColor)
-    {
-        if (m_InstanceMaterial != null)
+        if(!IsClient) return;
+        
+        if(other.TryGetComponent(out PlayerInventory inventory))
         {
-            m_InstanceMaterial.SetColor(“_BaseColor”, newColor);
+           
+            if(!inventory.IsOwner) return; //Make sure only the owners inventory gets the object
+
+            inventory.PickupItemRpc(itemData.ItemID,this.amount,NetworkObjectId);
+        }
+    }
+
+    private void AssignData() 
+    {
+        if(itemData != null)
+        {
+            if(TryGetComponent(out MeshFilter meshFilter))
+                meshFilter.mesh = itemData.mesh;
+            if(TryGetComponent(out MeshRenderer meshRenderer))
+                meshRenderer.material = itemData.material;
+            
+            //Probably there should be a collider data also in order the manage the mesh proportions and the corresponding collider
+            
+            gameObject.name = itemData.name;
         }
     }
 }
-
             </code></pre>
 
-            <p>When a player enters the trigger, this script will toggle the base color property of its material
-            instance. The script uses a NetworkVariable called m_NetworkColor.</p>
+            <p>The prefab should look something like this:</p>
 
-            <p>Here’s a breakdown of how this works:</p>
 
-            <ul>
-                <li>This NetworkVariable keeps track of the actual color value and then syncs across all
-                clients. Though the script runs on both the server and the clients, by default, only the
-                server has write permissions to the NetworkVariable. Clients can only read its Color
-                value.</li>
+            <figure>
+                <img src="../img/img-13.png" style="max-width: 45%;">
+                <figcaption>CollectableItem Prefab.</figcaption>
+            </figure>
 
-                <li>The OnValueChanged event updates the trigger’s material base color whenever the
-                NetworkVariable changes. The script subscribes to the event in OnNetworkSpawn and
-                unsubscribes in OnNetworkDespawn.
-                </li>
-            </ul>
+            <p>As you can see in the previous we are using the uInt variable ItemId to transfer the item through the network (client -> server).
+                We can't transfer more item data because it would affect the bandwith and therefore, the game. The player's inventory would
+                be the one to manage the item data base, in order to convert the itemId into a NetworkItem.
+            </p>
 
-            <h3>Adding RPC</h3>
+            <h4>The player's inventory</h4>
 
-            <p>Append these methods to the TriggerColor script:</p>
+            <p>Create the following component and add it to your player prefab</p>
 
             <pre><code class="language-csharp">
-private void OnTriggerEnter(Collider other)
- {
-    NetworkObject networkObject = other.GetComponent<NetworkObject>();
-    if (IsClient && networkObject != null && networkObject.IsOwner)
+using Unity.Netcode;
+using UnityEngine;
+
+public class PlayerInventory : NetworkBehaviour
+{
+    public NetworkList<NetworkItem> Inventory;
+    
+    [SerializeField, Tooltip("Add all the items that the player can pick up.")] private ItemData[] itemDatabase;
+    private void Awake()
     {
-        ChangeColorServerRpc(networkObject.OwnerClientId);
+        Inventory = new NetworkList<NetworkItem>();
+    }
+
+    [Rpc(SendTo.Server)]
+    public void PickupItemRpc(uint pickedItemID, int amount, ulong networkObjectId)
+    {
+        NetworkItem newItem = new NetworkItem 
+        { 
+            ItemID = pickedItemID, 
+            Amount = amount 
+        };
+        
+        Inventory.Add(newItem);
+        
+        if(NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(networkObjectId, out NetworkObject itemToDespawn))
+        {
+            itemToDespawn.Despawn(false); //We don't destroy the game object
+        }
+    }
+
+    public void ShowInventory()
+    {
+        foreach (var networkItem in Inventory)
+        {
+            // Translate the ID to an item
+            ItemData itemData = GetItemDataByID(networkItem.ItemID);
+            
+            Debug.Log($"I have {networkItem.Amount} of {itemData.ItemName}");
+        }
+    }
+
+
+    private ItemData GetItemDataByID(uint id)
+    {
+        foreach (var item in itemDatabase)
+        {
+            if (item.ItemID == id) return item;
+        }
+        return null;
     }
 }
-
-[Rpc(SendTo.Server)]
- private void ChangeColorServerRpc(ulong playerId)
- {
-    // Simple team system: blue for even, red for odd
-    Color newColor = (playerId % 2 == 0) ? new Color(0, 0, 1, 0.5f) : new Color(1, 0, 0, 0.5f);
-    m_NetworkColor.Value = newColor;
- }
             </code></pre>
 
-            <p>In a single-player game, you could add the appropriate logic to OnTriggerEnter. However,
-            in a multiplayer game, you typically handle interactions using client-server communication to
-            ensure that all clients remain in sync.</p>
 
-            <p>Instead of setting the m_NetworkColor value directly, OnTriggerEnter checks if the
-            current game instance is a client. If it is, it calls ChangeColorServerRpc and passes in the
-            OwnerClientId.</p>
+            <p>Two important new things are happening in this script:</p>
 
-            <p>This method determines the new color based on the player’s ID (in this example, even ID
-            numbers become blue, while odd IDs become red) and updates the m_NetworkColor value.</p>
+            <ol>
+                <li>First we have a player inventory, which is a NetworkItem list. When PickupItemRpc is called, it creates a new NetworkItem
+                    with the pickedItemID (and the amount) and then add it to the NetworkItem list. Then, in order to despawn the object (because
+                    is a collectable/pickable object) the code tryes to find it in the SpawnedObjects list with its networkObjectId, if it finds it,
+                    calls Despawn(false). It is important to put "false" inside the parenthesis because we don't want to destroy a gameobject, just to
+                    remove it from the network, then the Ondespawn function of CollectableItem will call SetActive(true) to make it disappear.
+                </li>
+                <li>Secondly, in itemDatabase you should add all the items the player can collect. This itemDatabase will help us to show the
+                    item data (for example the mesh or the name) that we were not able to transfer through the RPC (look at ShowInventory and 
+                    GetItemDataByID).
+                </li>
+            </ol>
 
-            <p>This change is propagated to all connected clients, ensuring every game instance
-            has a consistent view of the game state. When the m_NetworkColor changes, the
-            OnColorChanged method is triggered on all clients, updating the trigger’s material color.</p>
-
+          
         </section> 
     </main> 
 
