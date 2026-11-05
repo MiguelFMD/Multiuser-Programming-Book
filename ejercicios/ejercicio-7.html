@@ -117,9 +117,11 @@ using System;
 using UnityEngine;
 public static class EventManager
 {
-    public static Action<ulong> OnPlayerDied;
-    public static Action<ulong, float, float> OnHealthChanged;
-    public static Action<Vector3, Quaternion> OnShootPressed;
+    public static Action&lt;ulong&gt; OnPlayerDied;
+    public static Action&lt;ulong, float, float&gt; OnHealthChanged;
+    public static Action&lt;Vector3, Quaternion&gt; OnShootPressed;
+
+
 }
             </code></pre>
 
@@ -155,9 +157,9 @@ public class ProjectileTriggerComponent : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        damagerComponent = GetComponent<DamagerComponent>();
-        colliderComponent = GetComponent<Collider>();
-        rigidbodyComponent = GetComponent<Rigidbody>();
+        damagerComponent = GetComponent&lt;DamagerComponent&gt;();
+        colliderComponent = GetComponent&lt;Collider&gt;();
+        rigidbodyComponent = GetComponent&lt;Rigidbody&gt;();
         colliderComponent.isTrigger = true;
         if(IsServer)
             StartCoroutine(DespawnOnTime());
@@ -211,10 +213,126 @@ public class ProjectileTriggerComponent : NetworkBehaviour
             <p>If you have GameObject children, with NetworkBehaviour components attached, of a parent GameObject, with a NetworkObject component attached, 
                 you can't disable the GameObject children before spawning or despawning. Doing so can cause unexpected results and it's recommended to make 
                 sure all children are enabled in the hierarchy before spawning or despawning.</p>
+            
+            <h3>The Pool Manager with netowkork prefab handler</h3>
 
+            <p>The network prefab handler system provides advanced control over how network prefabs 
+                are instantiated and destroyed during runtime. You can use it to override the default 
+                Netcode for GameObjects object spawning behavior by implementing custom prefab handlers.</p>
             
 
+            <p>We use the network prefab handler to create our own PooledDynamicSpawner as follow:</p>
             
+            <pre><code class="language-csharp">
+using System.Collections;
+using System.Collections.Generic;
+using Unity.Netcode;
+using UnityEngine;
+
+public class PooledDynamicSpawner : NetworkBehaviour, INetworkPrefabInstanceHandler
+{
+    [Header("Pool Settings")]
+    public GameObject prefabToSpawn;
+    public int initialPoolSize = 20;
+    
+    private Queue&lt;NetworkObject&gt; m_PooledObjects = new Queue&lt;NetworkObject&gt;();
+    
+
+
+    private void Start()
+    {
+        for (int i = 0; i < initialPoolSize; i++)
+        {
+            CreateNewInstance();
+        }
+    }
+
+    private NetworkObject CreateNewInstance()
+    {
+        GameObject instance = Instantiate(prefabToSpawn);
+        instance.SetActive(false);
+        
+        NetworkObject netObj = instance.GetComponent&lt;NetworkObject&gt;();
+        m_PooledObjects.Enqueue(netObj);
+        
+        return netObj;
+    }
+
+    private NetworkObject GetFromPool()
+    {
+        if (m_PooledObjects.Count == 0)
+        {
+            Debug.LogWarning("Empty pool. Creating instance.");
+            CreateNewInstance();
+        }
+        return m_PooledObjects.Dequeue();
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        NetworkManager.Singleton.PrefabHandler.AddHandler(prefabToSpawn, this);
+        EventManager.OnShootPressed += SpawnBullet;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        EventManager.OnShootPressed -= SpawnBullet;
+    }
+
+    /// &lt;summary&gt;
+    /// Invoked only on non-authority clients
+    /// INetworkprefabInstanceHandler.Instantiate implementation
+    /// Called when Netcode for GameObjects need an instance to be spawned
+    /// &lt;/summary&gt;
+    public NetworkObject Instantiate(ulong ownerClientId, Vector3 position, Quaternion rotation)
+    {
+        NetworkObject netObj = GetFromPool();
+        netObj.gameObject.SetActive(true);
+        netObj.transform.SetPositionAndRotation(position, rotation);
+        return netObj;
+    }
+
+    /// &lt;summary&gt;
+    /// Called on all game clients
+    /// INetworkprefabInstanceHandler.Destroy implementation
+    /// &lt;/summary&gt;
+    public void Destroy(NetworkObject networkObject)
+    {
+        networkObject.gameObject.SetActive(false);
+        m_PooledObjects.Enqueue(networkObject);
+    }
+
+    /// &lt;summary&gt;
+    /// Spawns the bullet.
+    /// &lt;/summary&gt;
+    public void SpawnBullet(Vector3 position, Quaternion rotation)
+    {
+        if (!IsServer) return;
+        print("disparo");
+        NetworkObject bullet = GetFromPool();
+        
+        bullet.transform.SetPositionAndRotation(position, rotation);
+        bullet.gameObject.SetActive(true);
+        
+        bullet.Spawn(true);
+    }
+
+    public override void OnDestroy()
+    {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.PrefabHandler != null)
+        {
+            NetworkManager.Singleton.PrefabHandler.RemoveHandler(prefabToSpawn);
+        }
+        base.OnDestroy();
+    }
+}                
+            </code></pre>
+
+            <p>The prefab handler system addresses these needs through an interface-based architecture. 
+                The system relies on two key methods: Instantiate and Destroy. Instantiate is called on 
+                non-authority clients when an authority spawns a new NetworkObject that has a registered 
+                network prefab handler. Destroy is called on all game clients whenever a registered 
+                NetworkObject is destroyed.</p>
         </section> 
     </main> 
 
