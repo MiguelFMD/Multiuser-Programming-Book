@@ -28,6 +28,7 @@ function cargarMenu(rutaBase) {
                 <li><a href="${rutaBase}ejercicios/ejercicio-4.html"><i class="fa-solid fa-bookmark"></i> Exercise 4: Creating a lobby room</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-5.html"><i class="fa-solid fa-bookmark"></i> Exercise 5: Adding trigger collisions</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-6.html"><i class="fa-solid fa-bookmark"></i> Exercise 6: Customize serializable types</a></li>
+                <li><a href="${rutaBase}ejercicios/ejercicio-7.html"><i class="fa-solid fa-bookmark"></i> Exercise 7: ObjectPooling, spawning and despawning objects</a></li>
             </ul>
         </nav>
     `;

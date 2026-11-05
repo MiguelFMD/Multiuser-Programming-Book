@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programming for multi-user and social environments</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Soporte adicional para C# y C++ si lo necesitas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="network behaviour">
+            <h2 class="section-title">
+                <i class="fa-solid fa-dumbbell"></i> Exercise 7: ObjectPooling, spawning and despawning objects
+            </h2>
+
+            <p>By the end of this exercise you should have an understading of the concept of object pooling and spawning and despawning networked objects.</p>
+            
+            <p>Check the following links to get more in deep with spawning and despawning object with ownership:</p>
+            
+            <ul>
+                <li><a href="https://docs.unity3d.com/Packages/com.unity.netcode.gameobjects@2.13/manual/basics/object-spawning.html">Object Spawning</a></li>
+                <li><a href="https://docs.unity3d.com/Packages/com.unity.netcode.gameobjects@2.13/manual/components/core/networkobject-ownership.html">NetworkObject Ownership</a></li>
+                <li><a href="https://docs.unity3d.com/Packages/com.unity.netcode.gameobjects@2.13/manual/advanced-topics/network-prefab-handler.html">Network Prefab Handler</a></li>
+                <li><a href="https://docs.unity.com/en-us/engine/6000.3/manual/analysis/performance-memory/managed-memory/optimizing-code-managed-memory/reusable-code">Object Pooling</a></li>
+            </ul>
+
+
+            <h3>Shooter Component</h3>
+
+            <p>We can create our shooter component that could look something like the following code:</p>
+            
+            <pre><code class="language-csharp">
+using System;
+using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+public class ShooterComponent : NetworkBehaviour
+{
+    [SerializeField]
+    private Transform spawnTransform;
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner)
+        {
+            enabled = false;
+        }
+    }
+    void Update()
+    {
+        if(Keyboard.current.tKey.wasPressedThisFrame)
+        {
+            ShootServerRpc(spawnTransform.position, spawnTransform.rotation);
+        }
+    }
+
+    [Rpc(SendTo.Server)]
+    private void ShootServerRpc(Vector3 pos, Quaternion rot)
+    {
+        EventManager.OnBulletShot?.Invoke(pos, rot);
+    }
+}
+            </code></pre>
+
+            <p><i>*Note that, this script depends on the player's input, is not decoupled.</i></p>
+
+            <p>The event OnBulletShot is called on server to communicate with the PooledDynamicSpawner script in order to instantaite
+                the bullet, we will cover that script later in the exercise. This component doesn't know what object is going to spawn,
+                is just communicates that and object needs to be spawned.
+            </p>
+
+            <h4>EventManager</h4>
+            
+            <p>Example of a possible EventManager:</p>
+
+            <pre><code class="language-csharp">
+using System;
+
+using UnityEngine;
+public static class EventManager
+{
+    public static Action<ulong> OnPlayerDied;
+    public static Action<ulong, float, float> OnHealthChanged;
+    public static Action<Vector3, Quaternion> OnShootPressed;
+}
+            </code></pre>
+
+            <h3>Projectile Trigger Component</h3>
+
+            <p>The following code shows how the bullet behaviour, basically, a trigger collision that does something
+                when something enters in its trigger. It has a timer controlled by a coroutine so it despawns passed that time.
+            </p>
+
+            <pre><code class="language-csharp">
+using System.Collections;
+using Unity.Netcode;
+using UnityEngine;
+
+[RequireComponent (typeof (DamagerComponent))]
+[RequireComponent (typeof(Collider))]
+[RequireComponent(typeof(Rigidbody))]
+public class ProjectileTriggerComponent : NetworkBehaviour
+{
+    [SerializeField]
+    private float timeToDespawn = 4.0f;
+    [SerializeField]
+    private float speed = 1.0f;
+    DamagerComponent damagerComponent;
+    Collider colliderComponent;
+    Rigidbody rigidbodyComponent;
+
+    void FixedUpdate()
+    {
+        if(!IsServer) return;
+        rigidbodyComponent.linearVelocity = transform.forward * speed;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        damagerComponent = GetComponent<DamagerComponent>();
+        colliderComponent = GetComponent<Collider>();
+        rigidbodyComponent = GetComponent<Rigidbody>();
+        colliderComponent.isTrigger = true;
+        if(IsServer)
+            StartCoroutine(DespawnOnTime());
+        
+    }
+    public void OnTriggerEnter(Collider other)
+    {
+        if(other.TryGetComponent(out NetworkObject networkObject) && IsClient)
+        {
+            damagerComponent.Damage(networkObject);
+            DespawnParentServerRpc();
+        }
+    }
+
+    private IEnumerator DespawnOnTime()
+    {
+       yield return new WaitForSeconds(timeToDespawn);
+       DespawnParentServerRpc();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void DespawnParentServerRpc()
+    {
+        if(transform.parent.TryGetComponent(out NetworkObject parentNetworkObject))
+            parentNetworkObject.Despawn();
+    }
+}
+            </code></pre>
+
+            <h4>The Bullet Prefab</h4>
+            
+            <p>The important part here is the <i>DespawnParentServerRpc()</i> function,
+                remember that the server is the only one with authority to spawn and despawn objects. However the method is 
+                despawning the parent object. This is because the prefab of the networked object should have its <i>NetworkObject Component</i> 
+                separated from its <i>SpawnedComponents</i>. Something like this:
+            </p>
+
+            <figure>
+                <img src="../img/img-14.png" style="max-width: 40%;">
+                <figcaption>Bullet prefab - NetworkComponent(the parent).</figcaption>
+            </figure>
+
+            <figure>
+                <img src="../img/img-15.png" style="max-width: 40%;">
+                <figcaption>Bullet prefab - SpawnedComponents</figcaption>
+            </figure>
+
+            <p>When a client disconnects, all network prefab instances dynamically created during the network session will be destroyed on the client-side by default. 
+                If you don't want that to happen, set the DontDestroyWithOwner field on NetworkObject to true before despawning.</p>
+
+            <p>If you have GameObject children, with NetworkBehaviour components attached, of a parent GameObject, with a NetworkObject component attached, 
+                you can't disable the GameObject children before spawning or despawning. Doing so can cause unexpected results and it's recommended to make 
+                sure all children are enabled in the hierarchy before spawning or despawning.</p>
+
+            
+
+            
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
