@@ -128,7 +128,7 @@ public static class EventManager
             <h3>Projectile Trigger Component</h3>
 
             <p>The following code shows how the bullet behaviour, basically, a trigger collision that does something
-                when something enters in its trigger. It has a timer controlled by a coroutine so it despawns passed that time.
+                when an object enters in its trigger. It has a timer controlled by a coroutine so it despawns passed that time.
             </p>
 
             <pre><code class="language-csharp">
@@ -219,8 +219,14 @@ public class ProjectileTriggerComponent : NetworkBehaviour
             <p>The network prefab handler system provides advanced control over how network prefabs 
                 are instantiated and destroyed during runtime. You can use it to override the default 
                 Netcode for GameObjects object spawning behavior by implementing custom prefab handlers.</p>
-            
 
+            <p>The prefab handler system addresses these needs through an interface-based architecture. 
+            The system relies on two key methods: Instantiate and Destroy. Instantiate is called on 
+            non-authority clients when an authority spawns a new NetworkObject that has a registered 
+            network prefab handler. Destroy is called on all game clients whenever a registered 
+            NetworkObject is destroyed.</p>
+            
+            <p> Take your time to understand the code and ask questions if needed. </p>
             <p>We use the network prefab handler to create our own PooledDynamicSpawner as follow:</p>
             
             <pre><code class="language-csharp">
@@ -328,11 +334,7 @@ public class PooledDynamicSpawner : NetworkBehaviour, INetworkPrefabInstanceHand
 }                
             </code></pre>
 
-            <p>The prefab handler system addresses these needs through an interface-based architecture. 
-                The system relies on two key methods: Instantiate and Destroy. Instantiate is called on 
-                non-authority clients when an authority spawns a new NetworkObject that has a registered 
-                network prefab handler. Destroy is called on all game clients whenever a registered 
-                NetworkObject is destroyed.</p>
+            <p></p>
         </section> 
     </main> 
 
