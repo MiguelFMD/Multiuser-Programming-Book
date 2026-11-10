@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programming for multi-user and social environments</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="unity-relay-webgl">
+            <h2 class="section-title">
+                <i class="fa-solid fa-network-wired"></i> Exercise 8: Unity Relay & WebGL Deployment
+            </h2>
+
+            <p>By the end of this exercise, you should understand how to configure and integrate Unity Relay for peer-to-peer multiplayer connectivity without port forwarding, implement asynchronous network lobby logic with Unity Services, adapt network transport for WebGL using WebSockets, and build and publish your multiplayer project to Unity Play.</p>
+            
+            <p>Check the following links to dive deeper into Unity Multiplayer Services and asynchronous programming:</p>
+            
+            <ul>
+                <li><a href="https://docs.unity.com/en-us/mps-sdk/install-and-upgrade">Multiplayer Services (MPS) SDK Installation</a></li>
+                <li><a href="https://docs.unity.com/en-us/mps-sdk/networking/relay-servers">Unity Relay Servers</a></li>
+                <li><a href="https://docs.unity.com/en-us/engine/6000.3/manual/scripting/programming-distribute-work-threads/async-await-support">Async/Await Support in Unity</a></li>
+                <li><a href="https://play.unity.com">Unity Play Platform</a></li>
+            </ul>
+
+            <h3>1. Unity Cloud Services & Project Linking</h3>
+
+            <p>Before implementing Relay in code, your Unity Editor project must be linked to your Unity Cloud Organization. This authorizes your game clients to communicate with Unity Authentication and Relay services.</p>
+
+            <ol>
+                <li><strong>Verify your account session:</strong> Ensure you are signed in with your Unity ID in both the Unity Hub and the top corner of the Unity Editor.</li>
+                <li><strong>Open Project Services:</strong> Navigate to <code>Edit &gt; Project Settings</code> and select the <strong>Services</strong> tab.</li>
+                <li><strong>Link the Project:</strong> Click <strong>Use an existing Unity project ID</strong> (or <strong>Create a new Unity project ID</strong> if you haven't created one in your Unity Gaming Services dashboard). Select your Organization and define your cloud project name.</li>
+                <li><strong>Enable Relay and Authentication:</strong> Verify in the dashboard or Services window that both the <strong>Authentication</strong> and <strong>Relay</strong> packages/services are active.</li>
+            </ol>
+
+            <h3>2. Unity Relay Architecture</h3>
+
+            <p>In standard local host setups (LAN / direct IP), the host machine acts as the listener server. However, players connecting over the internet often sit behind restrictive NATs and firewalls, which prevents direct inbound connections without manual router port forwarding.</p>
+
+            <p><strong>Unity Relay</strong> solves this by placing an intermediate relay server in the cloud:</p>
+            <ul>
+                <li>The <strong>Host</strong> requests an allocation from Unity Relay and receives a unique, short alphanumeric <strong>Join Code</strong>.</li>
+                <li>The <strong>Clients</strong> enter this Join Code to retrieve the relay server's connection endpoints.</li>
+                <li>All network traffic routes securely through the Relay server without exposing private IP addresses or requiring port forwarding.</li>
+            </ul>
+
+            <h3>3. Implementing RelayManager</h3>
+
+            <p>The <code>RelayManager.cs</code> script handles service authentication, allocates relay slots, fetches the join code for the host, and binds the connection data to the <code>UnityTransport</code> component attached to your <code>NetworkManager</code>.</p>
+
+            <pre><code class="language-csharp">
+using System.Threading.Tasks;
+using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
+using Unity.Services.Authentication;
+using Unity.Services.Core;
+using Unity.Services.Relay;
+using Unity.Services.Relay.Models;
+using UnityEngine;
+
+public class RelayManager : MonoBehaviour
+{
+   public async Task&lt;string&gt; StartHostWithRelay(int maxConnections, string connectionType)
+    {
+        await UnityServices.InitializeAsync();
+        if (!AuthenticationService.Instance.IsSignedIn)
+        {
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        }
+        var allocation = await RelayService.Instance.CreateAllocationAsync(maxConnections);
+        NetworkManager.Singleton.GetComponent&lt;UnityTransport&gt;().SetRelayServerData(AllocationUtils.ToRelayServerData(allocation, connectionType));
+        var joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+        Debug.Log($"&lt;color=green&gt;&lt;b&gt;=== JOIN CODE FOR CLIENTS: {joinCode} ===&lt;/b&gt;&lt;/color&gt;");
+        return NetworkManager.Singleton.StartHost() ? joinCode : null;
+    }
+
+    public async Task&lt;bool&gt; StartClientWithRelay(string joinCode, string connectionType)
+    {
+        await UnityServices.InitializeAsync();
+        if (!AuthenticationService.Instance.IsSignedIn)
+        {
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        }
+
+        var allocation = await RelayService.Instance.JoinAllocationAsync(joinCode: joinCode);
+        NetworkManager.Singleton.GetComponent&lt;UnityTransport&gt;().SetRelayServerData(AllocationUtils.ToRelayServerData(allocation, connectionType));
+        return !string.IsNullOrEmpty(joinCode) && NetworkManager.Singleton.StartClient();
+    }
+}
+            </code></pre>
+
+            <p><i>*Note: Attach this script to a dedicated GameObject (e.g., <code>RelayManager</code>) in your Lobby scene.</i></p>
+
+            <h3>4. Modern Asynchronous UI with LobbyUI</h3>
+
+            <p>We replace the synchronous <code>UIStartButtons.cs</code> component with <code>LobbyUI.cs</code>. Because network authentication and server allocations require non-blocking round trips over the internet, we execute them using <code>async/await</code> to keep the UI responsive.</p>
+
+            <pre><code class="language-csharp">
+using TMPro;
+using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class LobbyUI : MonoBehaviour
+{
+    [Header("Relay")]
+    [SerializeField] RelayManager relayManager;
+    [SerializeField] string connectionType = "wss";
+    [Header ("UI")]
+    [SerializeField] GameObject initButtons;
+    [SerializeField] GameObject joinButtons;
+    [SerializeField] Button hostButton;
+    [SerializeField] Button clientButton;
+    [SerializeField] Button backButton;
+    [SerializeField] Button joinPartyButton;
+    [SerializeField] TMP_Text hostCode;
+    private bool toggleButtons = false;
+
+    void OnEnable()
+    {
+        hostButton.onClick.AddListener(OnStartHostClickAsync);
+        joinPartyButton.onClick.AddListener(OnStartClientClickAsync);
+        clientButton.onClick.AddListener(ToggleButtons);
+        backButton.onClick.AddListener(ToggleButtons);
+    }
+
+    void OnDisable()
+    {
+        hostButton.onClick.RemoveAllListeners();
+        joinPartyButton.onClick.RemoveAllListeners();
+        clientButton.onClick.RemoveAllListeners();
+        backButton.onClick.RemoveAllListeners();
+    }
+
+    public async void OnStartHostClickAsync()
+    {
+        try
+        {
+            hostButton.enabled = false;
+            initButtons.SetActive(false);
+            int maxPlayers = NetworkManager.Singleton.GetComponent&lt;ConnectionApprovalHandler&gt;().maxPlayers;
+            await relayManager.StartHostWithRelay(maxPlayers, connectionType);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error trying to connect the host with Relay: {e}");
+            hostButton.enabled = true;
+            initButtons.SetActive(true);
+        }
+        
+    }
+
+    public async void OnStartClientClickAsync()
+    {
+        try
+        {
+            clientButton.enabled = false;
+            joinButtons.SetActive(false);
+            string cleanCode = hostCode.text.Trim().Replace("\u200B", "");
+            Debug.Log($"Intentando conectar con código puro: '{cleanCode}' | Longitud: {cleanCode.Length}");
+            await relayManager.StartClientWithRelay(cleanCode, connectionType);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error trying to connect the client with Relay: {e}");
+            clientButton.enabled = true;
+            joinButtons.SetActive(true);
+        }
+    }
+
+    public void OnStartServerClick()
+    {
+        NetworkManager.Singleton.StartServer();
+    }
+
+    private void ToggleButtons()
+    {
+        toggleButtons = !toggleButtons;
+        initButtons.SetActive(!toggleButtons);
+        joinButtons.SetActive(toggleButtons);
+        
+    }
+
+    
+}
+            </code></pre>
+
+            <h4>Configuring the Lobby UI Inspector</h4>
+
+            <p>Instead of rebuilding the menu from scratch, import the <code>LobbyMenuRelay</code> prefab available on the course virtual campus. Add the <code>LobbyUI.cs</code> component to your <code>LobbyManager</code> GameObject and wire the UI elements as shown below:</p>
+
+            <figure>
+                <img src="../img/img-16.png" style="max-width: 60%;" alt="LobbyUI Inspector Setup">
+                <figcaption>LobbyUI component Inspector setup with UI element references.</figcaption>
+            </figure>
+
+            <h3>5. WebGL Configuration & WebSocket Protocol</h3>
+
+            <p>Web browsers enforce a sandboxed execution environment that cannot open raw UDP or DTLS network sockets. To enable browser multiplayer sessions, your network transport must switch to secure WebSockets (WSS).</p>
+
+            <h4>Step 1: Set the Connection Protocol to WebSockets (WSS)</h4>
+            <p>When calling <code>StartHostWithRelay</code> and <code>StartClientWithRelay</code>, pass <code>"wss"</code> as the connection protocol instead of <code>"udp"</code> or <code>"dtls"</code>.</p>
+            <p><i>*Important: Verify that the <code>UnityTransport</code> component attached to your <code>NetworkManager</code> has the <strong>Use WebSockets</strong> option enabled. Unity 6 configures this automatically when passing "wss", but verifying it in the Inspector ensures correct fallback behavior.</i></p>
+
+            <h4>Step 2: Switch Platform to WebGL</h4>
+            <ol>
+                <li>Open <strong>File &gt; Build Settings</strong>.</li>
+                <li>In the <strong>Platform</strong> list, select <strong>WebGL</strong>.</li>
+                <li>Click <strong>Switch Platform</strong> (Unity will recompile assets, which may take a few minutes). If WebGL is missing, install the WebGL Build Support module through Unity Hub.</li>
+            </ol>
+
+            <h4>Step 3: WebGL Player Settings</h4>
+            <p>Open <strong>Edit &gt; Project Settings &gt; Player</strong> and switch to the <strong>WebGL (HTML5 icon)</strong> tab:</p>
+            <ul>
+                <li><strong>Resolution and Presentation:</strong> Set your target resolution (e.g., 1280 &times; 720). Enable <strong>Run In Background</strong> so the browser will not pause network execution and cause timeouts when players switch browser tabs.</li>
+                <li><strong>Publishing Settings &gt; Compression Format:</strong> Select <strong>Gzip</strong>. While Brotli achieves higher compression ratios, several web hosts misconfigure Brotli HTTP headers, causing decompression crashes.</li>
+                <li><strong>Publishing Settings &gt; Decompression Fallback:</strong> Check this option. This injects a client-side JavaScript decompression fallback, ensuring your game loads correctly regardless of server HTTP compression headers.</li>
+            </ul>
+
+            <h3>6. Building and Publishing to Unity Play</h3>
+
+            <p>Once your settings and scenes are configured, compile your WebGL game and deploy it online.</p>
+
+            <h4>Step 4: Build the Game</h4>
+            <ol>
+                <li>Return to <strong>File &gt; Build Settings</strong>.</li>
+                <li>Ensure all necessary scenes (such as your <code>Lobby</code> scene and your <code>MainScene</code>) are added to <strong>Scenes In Build</strong> in their proper order.</li>
+                <li>Click <strong>Build</strong>.</li>
+                <li>Select a brand-new, empty folder outside your Unity project repository (e.g., <code>Builds/WebGL</code>). Unity will generate an <code>index.html</code> file alongside a <code>Build/</code> folder.</li>
+            </ol>
+
+            <h4>Step 5: Publish on Unity Play</h4>
+            <p><a href="https://play.unity.com">Unity Play</a> is Unity's official hosting platform for WebGL games and student prototypes.</p>
+            <ol>
+                <li>Navigate to the folder containing your generated build. Select all internal files (<code>index.html</code>, the <code>Build/</code> directory, and any template assets), right-click, and compress them directly into a single <code>.zip</code> archive (do not compress the parent folder itself).</li>
+                <li>Open your browser and navigate to <a href="https://play.unity.com" target="_blank" rel="noopener">play.unity.com</a>.</li>
+                <li>Sign in with your Unity ID.</li>
+                <li>Click on your profile avatar in the upper right corner and select <strong>Post a game</strong>.</li>
+                <li>Provide a title, instructions, and description for your multiplayer game.</li>
+                <li>In the upload area, drag and drop your created <code>.zip</code> file.</li>
+                <li>Upload a thumbnail screenshot and click <strong>Publish</strong>.</li>
+            </ol>
+
+            <p>Your game is now playable directly in any modern desktop web browser via Unity Relay!</p>
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+        hljs.highlightAll();
+    </script>
+</body>
+</html>
