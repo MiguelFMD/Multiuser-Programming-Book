@@ -103,7 +103,7 @@ namespace NetcodeDemo
             GameObject virtualCameraObject = GameObject.Find("PlayerFollowCamera");
             if(virtualCameraObject != null)
             {
-                var vCam3 = virtualCameraObject.GetComponent<Unity.Cinemachine.CinemachineCamera>();
+                var vCam3 = virtualCameraObject.GetComponent&lt;Unity.Cinemachine.CinemachineCamera&gt;();
                 if (vCam3 != null) vCam3.Follow = CinemachineCameraTarget.transform;
             }
 

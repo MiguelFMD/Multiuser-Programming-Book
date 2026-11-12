@@ -64,7 +64,7 @@
                 type inherits INetworkSerializable, and if it does, it calls its write methods.</p>
             
             <p>You can use the INetworkSerializable interface to define custom serializable types. This interface has one function: 
-                NetworkSerialize<T>(BufferSerializer<T> serializer), which ingests a bi-directional BufferSerializer that you can use to 
+                NetworkSerialize&lt;T&gt;(BufferSerializer&lt;T&gt; serializer), which ingests a bi-directional BufferSerializer that you can use to 
                     implement bi-directional custom serialization.</p>
             
             <p>INetworkSerializable can be implemented on both managed and unmanaged types, although serializing managed types isn't 
@@ -76,12 +76,12 @@
 using Unity.Netcode;
 using System;
 
-public struct NetworkItem : INetworkSerializable, IEquatable<NetworkItem>
+public struct NetworkItem : INetworkSerializable, IEquatable&lt;NetworkItem&gt;
 {
     public uint ItemID;
     public int Amount;
 
-    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    public void NetworkSerialize&lt;T&gt;(BufferSerializer&lt;T&gt; serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref ItemID);
         serializer.SerializeValue(ref Amount);
@@ -217,12 +217,12 @@ using UnityEngine;
 
 public class PlayerInventory : NetworkBehaviour
 {
-    public NetworkList<NetworkItem> Inventory;
+    public NetworkList&lt;NetworkItem&gt; Inventory;
     
     [SerializeField, Tooltip("Add all the items that the player can pick up.")] private ItemData[] itemDatabase;
     private void Awake()
     {
-        Inventory = new NetworkList<NetworkItem>();
+        Inventory = new NetworkList&lt;NetworkItem&gt;();
     }
 
     [Rpc(SendTo.Server)]

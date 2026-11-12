@@ -72,12 +72,12 @@ using UnityEngine;
 using Unity.Netcode;
 public class ColorTrigger : NetworkBehaviour
 {
-    public NetworkVariable<Color> m_NetworkColor = new NetworkVariable<Color>(Color.white);
+    public NetworkVariable&lt;Color&gt; m_NetworkColor = new NetworkVariable&lt;Color&gt;(Color.white);
     private Material m_InstanceMaterial;
     public override void OnNetworkSpawn()
     {
         m_NetworkColor.OnValueChanged += OnColorChanged;
-        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+        MeshRenderer meshRenderer = GetComponent&lt;MeshRenderer&gt;();
         if (meshRenderer != null)
         {
             m_InstanceMaterial = new Material(meshRenderer.material);
@@ -131,7 +131,7 @@ public class ColorTrigger : NetworkBehaviour
             <pre><code class="language-csharp">
 private void OnTriggerEnter(Collider other)
  {
-    NetworkObject networkObject = other.GetComponent<NetworkObject>();
+    NetworkObject networkObject = other.GetComponent&lt;NetworkObject&gt;();
     if (IsClient && networkObject != null && networkObject.IsOwner)
     {
         ChangeColorServerRpc(networkObject.OwnerClientId);

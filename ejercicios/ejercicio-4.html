@@ -85,7 +85,7 @@ public class ConnectionApprovalHandler : MonoBehaviour
 
     private void Start()
     {
-        m_NetworkManager = GetComponent<NetworkManager>();
+        m_NetworkManager = GetComponent&lt;NetworkManager&gt;();
         m_NetworkManager.NetworkConfig.ConnectionApproval = true; //Enable ConnectionApproval
         if (m_NetworkManager != null)
         {
