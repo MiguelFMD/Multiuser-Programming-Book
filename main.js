@@ -18,6 +18,7 @@ function cargarMenu(rutaBase) {
                 <li><a href="${rutaBase}index.html"><i class="fa-solid fa-bookmark"></i> Chapter 0: Introduction and Workspace</a></li>
                 <li><a href="${rutaBase}contenido/tema-1.html"><i class="fa-solid fa-bookmark"></i> Chapter 1: Introduction to Data Networks</a></li>
                 <li><a href="${rutaBase}contenido/tema-2.html"><i class="fa-solid fa-bookmark"></i> Chapter 2: Netcode for GameObjects</a></li>
+                <li><a href="${rutaBase}contenido/tema-3.html"><i class="fa-solid fa-bookmark"></i> Chapter 3: Cloud Save with Unity Cloud</a></li>
             </ul>
         <h2>Exercises</h2>
             <ul>

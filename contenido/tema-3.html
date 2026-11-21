@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 3: Cloud Save with Unity Cloud</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Soporte adicional para C# y C++ si lo necesitas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="tema-3">
+            <h2 class="section-title">
+                <i class="fa-solid fa-bookmark"></i> Chapter 3: Cloud Save with Unity Cloud
+            </h2>
+            
+            <h3>1. Introduction: From Ephemeral State to Cloud Persistence</h3>
+
+            <p>In the previous chapter, we explored how <strong>Netcode for GameObjects (NGO)</strong> synchronizes game state across connected clients in real time. Mechanisms such as <code>NetworkVariable</code> and Remote Procedure Calls (<code>RPCs</code>) operate in volatile memory (RAM) while a multiplayer session is active. However, once the host disconnects or the dedicated server shuts down, all in-memory state is lost.</p>
+
+            <p>To retain player progression, inventories, currencies, and shared world states across different sessions and devices, multiplayer games require <strong>persistent storage</strong>. Historically, studios built custom backend APIs backed by relational databases (such as MySQL or PostgreSQL). In modern game development, however, teams increasingly rely on <strong>Backend-as-a-Service (BaaS)</strong> platforms like <strong>Unity Gaming Services (UGS)</strong>, which abstract server infrastructure, scalability, and database administration.</p>
+
+            <p><strong>Unity Cloud Save</strong> is a managed NoSQL cloud storage service designed specifically for games. Under the hood, the SDK communicates asynchronously with Unity’s cloud servers over HTTPS/REST, allowing developers to store structured key-value data and binary files without writing custom web servers.</p>
+
+            <h3>2. Service Initialization and Player Identity</h3>
+
+            <p>Cloud Save cannot operate in isolation; it depends on <strong>Unity Core Services</strong> and <strong>Unity Authentication</strong>. Every record stored in Player Data is partitioned under a unique <code>PlayerId</code> generated when a user signs in.</p>
+
+            <p>Because network requests to cloud servers involve high latency compared to local memory access (typically tens to hundreds of milliseconds), all Cloud Save operations are <strong>asynchronous</strong>. In C#, they return <code>Task</code> or <code>Task&lt;T&gt;</code> objects and must be awaited using <code>async/await</code> so that Unity’s main rendering thread never freezes while waiting for a server response.</p>
+
+            <pre><code class="language-csharp">
+using System.Threading.Tasks;
+using Unity.Services.Authentication;
+using Unity.Services.Core;
+using UnityEngine;
+
+public class CloudInitializer : MonoBehaviour
+{
+    private async void Start()
+    {
+        await InitializeServicesAsync();
+    }
+
+    private async Task InitializeServicesAsync()
+    {
+        // 1. Initialize Unity Gaming Services SDK
+        await UnityServices.InitializeAsync();
+
+        // 2. Authenticate the player to obtain a unique PlayerId
+        if (!AuthenticationService.Instance.IsSignedIn)
+        {
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            Debug.Log($"Signed in with PlayerId: {AuthenticationService.Instance.PlayerId}");
+        }
+    }
+}</code></pre>
+
+            <h4>Exception Handling and Rate Limits</h4>
+
+            <p>Unlike local file I/O, cloud operations can fail due to connectivity drops, invalid payloads, or throttling. Production code should wrap SDK calls in <code>try-catch</code> blocks to handle specific exceptions:</p>
+
+            <ul>
+                <li><strong><code>CloudSaveValidationException</code></strong>: Triggered when data exceeds size quotas, violates schema rules, or fails a <em>write lock</em> check.</li>
+                <li><strong><code>CloudSaveRateLimitedException</code></strong>: Triggered when a client exceeds Unity’s traffic quotas (by default, up to <strong>600 requests per minute</strong> per player). Batching multiple keys into a single <code>SaveAsync</code> or <code>LoadAsync</code> call prevents hitting rate limits.</li>
+                <li><strong><code>CloudSaveException</code></strong>: Base exception covering general network or server-side errors.</li>
+            </ul>
+
+            <h3>3. Data Modeling and Storage Types</h3>
+
+            <p>Designing an efficient cloud persistence layer requires choosing the right storage primitive based on data size, structure, and access patterns. Unity Cloud Save divides storage into three distinct categories:</p>
+
+            <h4>Player Data (Key-Value JSON)</h4>
+
+            <p><strong>Player Data</strong> stores key-value pairs associated with an individual <code>PlayerId</code>. Keys are strings, and values can be primitive types (<code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>) or complex C# classes marked with <code>[Serializable]</code>, which the SDK automatically serializes into JSON.</p>
+
+            <ul>
+                <li><strong>Storage Quotas</strong>: Up to <strong>2,000 keys</strong> and <strong>5 MiB</strong> of total data per player within each Access Class.</li>
+                <li><strong>Use Cases</strong>: Player level, experience points, equipped cosmetics, serialized inventories, and gameplay preferences.</li>
+            </ul>
+
+            <h4>Game Data (Custom Items)</h4>
+
+            <p>Not all persistent data belongs to a single user. Multiplayer games often need to persist shared entities such as clans, guilds, dynamic marketplace catalogs, or global seasonal event parameters. <strong>Game Data</strong> (accessed via <code>CloudSaveService.Instance.Data.Custom</code>) stores key-value pairs indexed by a developer-defined <code>CustomId</code> rather than a <code>PlayerId</code>.</p>
+
+            <ul>
+                <li><strong>Storage Quotas</strong>: Up to <strong>2,000 keys</strong> and <strong>5 MiB</strong> per Custom Item ID within each Access Class.</li>
+                <li><strong>Use Cases</strong>: Guild progression shared among members, global boss health pools, or live-ops balance tables updated without publishing a new game client build.</li>
+            </ul>
+
+            
+            <h3>4. Security and Authority: Access Classes</h3>
+
+            <p>In Chapter 2, we established a golden rule of multiplayer engineering: <strong>never trust the client</strong>. If a game client has unrestricted write access to its own currency or competitive rank in the cloud, malicious players can intercept HTTPS traffic or modify client memory to grant themselves unlimited resources.</p>
+
+            <p>Unity Cloud Save enforces server authority at the storage layer through <strong>Access Classes</strong>, which define read and write permissions for clients versus trusted server environments (such as dedicated servers or Unity Cloud Code):</p>
+
+            <h4>Player Data Access Classes</h4>
+
+            <ul>
+                <li><strong>Default</strong>: Only the owning player can read and write this data. Other players cannot see it. Ideal for local settings, single-player campaign checkpoints, or non-competitive state.</li>
+                <li><strong>Public</strong>: Any authenticated player in the game can <strong>read</strong> this data (by querying another user's <code>PlayerId</code>), while only the owning player can <strong>write</strong> to it. Ideal for public profiles, display names, clan badges, or equipped cosmetic skins shown in lobbies.</li>
+                <li><strong>Protected</strong>: The owning player can <strong>read</strong> this data, but <strong>only trusted server code</strong> (Cloud Code or Admin APIs) can <strong>write</strong> or delete it. Client write attempts are rejected by the server. Essential for virtual currencies, unlocked items, battle pass tiers, and matchmaking ratings (ELO).</li>
+            </ul>
+
+            <h4>Game Data (Custom Items) Access Classes</h4>
+
+            <ul>
+                <li><strong>Default</strong>: Any authenticated player can <strong>read</strong> the data, while only server-side code can <strong>write</strong> to it. Ideal for global event rules, daily shop rotations, or public guild leaderboards.</li>
+                <li><strong>Private</strong>: Completely invisible to game clients; both <strong>read</strong> and <strong>write</strong> operations are restricted exclusively to server-side code. Ideal for internal anti-cheat metrics, secret drop-rate tables, or server-only world seeds.</li>
+            </ul>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Scope</th>
+                        <th>Access Class</th>
+                        <th>Owner Client</th>
+                        <th>Other Clients</th>
+                        <th>Server / Cloud Code</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Player Data</strong></td>
+                        <td><code>Default</code></td>
+                        <td>Read / Write</td>
+                        <td>No Access</td>
+                        <td>Read / Write</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Player Data</strong></td>
+                        <td><code>Public</code></td>
+                        <td>Read / Write</td>
+                        <td>Read Only</td>
+                        <td>Read / Write</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Player Data</strong></td>
+                        <td><code>Protected</code></td>
+                        <td>Read Only</td>
+                        <td>No Access</td>
+                        <td>Read / Write</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Game Data</strong></td>
+                        <td><code>Default</code></td>
+                        <td>Read Only</td>
+                        <td>Read Only</td>
+                        <td>Read / Write</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Game Data</strong></td>
+                        <td><code>Private</code></td>
+                        <td>No Access</td>
+                        <td>No Access</td>
+                        <td>Read / Write</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>5. Concurrency Control: Write Locks</h3>
+
+            <p>Modern games frequently support cross-platform play or server-side background rewards. This introduces the classic database problem of <strong>race conditions</strong> (lost updates).</p>
+
+            <p>Consider a player logged into the same account on both PC and mobile simultaneously, or a client saving inventory changes at the exact millisecond a Cloud Code script grants a tournament prize. Without concurrency control, whichever request arrives last blindly overwrites the database, erasing the earlier update.</p>
+
+            <h4>Optimistic Concurrency with Write Locks</h4>
+
+            <p>Instead of locking database rows (which degrades scalability over high-latency connections), Unity Cloud Save implements <strong>Optimistic Concurrency Control (OCC)</strong> via <strong>Write Locks</strong>:</p>
+
+            <ol>
+                <li>Every time a key is created, loaded, or updated, the server generates an opaque version token called a <code>writeLock</code> (e.g., <code>"a1b2c3d4"</code>) and returns it alongside the data.</li>
+                <li>When updating a key, the client can wrap the new value inside a <code>SaveItem(value, writeLock)</code> object.</li>
+                <li>Before committing the write, the server compares the client's <code>writeLock</code> against the current version stored in the cloud.</li>
+                <li>If they match, the update succeeds and a <strong>new <code>writeLock</code></strong> is returned. If another process modified the key in the meantime, the tokens differ and the server rejects the request with a <code>CloudSaveValidationException</code>.</li>
+            </ol>
+
+            <pre><code class="language-csharp">using System.Collections.Generic;
+using System.Threading.Tasks;
+using Unity.Services.CloudSave;
+using Unity.Services.CloudSave.Models;
+using UnityEngine;
+
+public class ConcurrencyExample
+{
+    public async Task SafeUpdateAsync(string key, object newData, string currentWriteLock)
+    {
+        try
+        {
+            // Wrap the value in a SaveItem to enforce write lock validation
+            var data = new Dictionary&lt;string, SaveItem&gt;
+            {
+                { key, new SaveItem(newData, currentWriteLock) }
+            };
+
+            Dictionary&lt;string, string&gt; result = await CloudSaveService.Instance.Data.Player.SaveAsync(data);
+            string updatedWriteLock = result[key];
+            Debug.Log($"Saved safely. New writeLock: {updatedWriteLock}");
+        }
+        catch (CloudSaveValidationException)
+        {
+            // Conflict detected: reload latest server state, merge changes, and retry
+            Debug.LogWarning("Write conflict detected! Data was modified by another session.");
+        }
+    }
+}</code></pre>
+
+            <p>Depending on the criticality of the data, developers choose between two strategies:</p>
+
+            <ul>
+                <li><strong>Unconditional (Forced) Writes</strong>: Passing raw values instead of <code>SaveItem</code> omits the <code>writeLock</code> check and overwrites the server state unconditionally. Suitable for non-critical settings like audio volume.</li>
+                <li><strong>Validated Writes (Read-Merge-Write)</strong>: Passing a <code>writeLock</code> (or <code>DeleteOptions { WriteLock = ... }</code> when deleting) guarantees data integrity. On conflict, the client re-downloads the latest version, merges progress, and retries.</li>
+            </ul>
+
+            <h3>6. Indexing and Queries (Cloud Save Queries)</h3>
+
+            <p>Key-value stores are optimized for $O(1)$ lookups when you already know the exact <code>PlayerId</code> or <code>CustomId</code>. However, multiplayer games often need to search across records—for example, finding guilds with open slots or locating opponents within a specific skill bracket.</p>
+
+            <p><strong>Cloud Save Queries</strong> provide SQL-like filtering capabilities across Player Data (<em>Public</em> access class) and Game Data (<em>Default</em> access class), subject to strict architectural constraints designed to guarantee predictable cloud performance:</p>
+
+            <h4>Pre-Declared Indexes</h4>
+
+            <p>Unlike relational databases that allow unindexed full-table scans, Cloud Save <strong>only allows queries on keys explicitly configured as indexes</strong> in the Unity Dashboard or via the UGS CLI:</p>
+
+            <ul>
+                <li><strong>Index Quota</strong>: A project supports up to <strong>20 indexed keys</strong> in total across Player and Game Data, with indexed values capped at <strong>128 bytes</strong>.</li>
+                <li><strong>No Retroactive Indexing</strong>: Creating an index only tracks writes performed <em>after</em> the index is defined. Existing records saved prior to index creation will not appear in query results until they are updated and re-saved.</li>
+            </ul>
+
+            <h4>Filter Operators and Composite Indexes</h4>
+
+            <p>Queries combine one or more field filters using standard comparison operators: <code>EQ</code> (equal), <code>NE</code> (not equal), <code>LT</code> (less than), <code>LE</code> (less than or equal), <code>GT</code> (greater than), and <code>GE</code> (greater than or equal). Numeric values are compared mathematically, while strings are compared lexicographically.</p>
+
+            <p>When querying multiple conditions simultaneously (e.g., filtering by both <code>Region == "EU"</code> and <code>Rank &gt;= 1500</code>), a <strong>composite index</strong> must be defined in the exact evaluation order required by the query. Additionally, queries support a <code>sampleSize</code> parameter that returns a randomized subset of matching records—a lightweight technique commonly used for lobby discovery or basic skill-based matchmaking without downloading thousands of records.</p>
+
+           
+        </section>
+    </main>
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../");
+        hljs.highlightAll();
+    </script>
+</body>
+</html>

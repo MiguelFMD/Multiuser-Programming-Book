@@ -46,7 +46,7 @@
     <aside></aside>
 
     <main>
-        <section id="network behaviour">
+        <section id="exercise-7">
             <h2 class="section-title">
                 <i class="fa-solid fa-dumbbell"></i> Exercise 7: ObjectPooling, spawning and despawning objects
             </h2>
@@ -119,7 +119,7 @@ public static class EventManager
 {
     public static Action&lt;ulong&gt; OnPlayerDied;
     public static Action&lt;ulong, float, float&gt; OnHealthChanged;
-    public static Action&lt;Vector3, Quaternion&gt; OnShootPressed;
+    public static Action&lt;Vector3, Quaternion&gt; OnBulletShot;
 
 
 }
@@ -136,7 +136,6 @@ using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
-[RequireComponent (typeof (DamagerComponent))]
 [RequireComponent (typeof(Collider))]
 [RequireComponent(typeof(Rigidbody))]
 public class ProjectileTriggerComponent : NetworkBehaviour
@@ -145,7 +144,6 @@ public class ProjectileTriggerComponent : NetworkBehaviour
     private float timeToDespawn = 4.0f;
     [SerializeField]
     private float speed = 1.0f;
-    DamagerComponent damagerComponent;
     Collider colliderComponent;
     Rigidbody rigidbodyComponent;
 
@@ -157,7 +155,6 @@ public class ProjectileTriggerComponent : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        damagerComponent = GetComponent&lt;DamagerComponent&gt;();
         colliderComponent = GetComponent&lt;Collider&gt;();
         rigidbodyComponent = GetComponent&lt;Rigidbody&gt;();
         colliderComponent.isTrigger = true;
@@ -169,7 +166,6 @@ public class ProjectileTriggerComponent : NetworkBehaviour
     {
         if(other.TryGetComponent(out NetworkObject networkObject) && IsClient)
         {
-            damagerComponent.Damage(networkObject);
             DespawnParentServerRpc();
         }
     }
@@ -277,12 +273,12 @@ public class PooledDynamicSpawner : NetworkBehaviour, INetworkPrefabInstanceHand
     public override void OnNetworkSpawn()
     {
         NetworkManager.Singleton.PrefabHandler.AddHandler(prefabToSpawn, this);
-        EventManager.OnShootPressed += SpawnBullet;
+        EventManager.OnBulletShot += SpawnBullet;
     }
 
     public override void OnNetworkDespawn()
     {
-        EventManager.OnShootPressed -= SpawnBullet;
+        EventManager.OnBulletShot -= SpawnBullet;
     }
 
     /// &lt;summary&gt;
