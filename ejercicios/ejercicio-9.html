@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programming for multi-user and social environments</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Soporte adicional para C# y C++ si lo necesitas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" 
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError : false
+            });">
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <aside></aside>
+
+    <main>
+        <section id="exercise-9">
+            <h2 class="section-title">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Exercise 9: Cloud Persistence with Unity Cloud Save
+            </h2>
+
+            <p>By the end of this exercise, you should understand how to install and configure Unity Cloud Save, persist a synchronized multiplayer inventory across game sessions, prevent race conditions using Optimistic Concurrency Control (Write Locks), and optimize cloud network requests using the Dirty Flag programming pattern.</p>
+            
+            <p>Check the following links to dive deeper into Unity Cloud Save, concurrency control, and the Dirty Flag pattern:</p>
+            
+            <ul>
+                <li><a href="https://docs.unity.com/en-us/cloud-save/get-started" target="_blank" rel="noopener">Unity Cloud Save: Get Started Guide</a></li>
+                <li><a href="https://docs.unity.com/en-us/cloud-save/concepts/player-data" target="_blank" rel="noopener">Cloud Save Player Data</a></li>
+                <li><a href="https://docs.unity.com/en-us/cloud-save/concepts/write-locks" target="_blank" rel="noopener">Conflict Resolution with Write Locks</a></li>
+                <li><a href="https://gameprogrammingpatterns.com/dirty-flag.html" target="_blank" rel="noopener">Game Programming Patterns: Dirty Flag</a></li>
+            </ul>
+
+            <h3>1. Installing &amp; Configuring Unity Cloud Save</h3>
+
+            <p>Before writing any persistence code, you must install the Cloud Save SDK and enable the service in your Unity Gaming Services (UGS) project. Follow the official <a href="https://docs.unity.com/en-us/cloud-save/get-started" target="_blank" rel="noopener">Unity Cloud Save Get Started documentation</a> to set up your environment:</p>
+
+            <ol>
+                <li><strong>Link your Unity Project:</strong> Open <code>Edit &gt; Project Settings &gt; Services</code> and verify that your project is linked to your Unity Cloud Organization and Project ID.</li>
+                <li><strong>Install the Cloud Save Package:</strong> Open <code>Window &gt; Package Manager</code>, switch the registry filter to <strong>Unity Registry</strong>, search for <strong>Cloud Save</strong> (<code>com.unity.services.cloudsave</code>), and click <strong>Install</strong>. Installing this package automatically includes <strong>Unity Services Core</strong>.</li>
+                <li><strong>Verify Authentication Package:</strong> Ensure <strong>Authentication</strong> (<code>com.unity.services.authentication</code>) is also installed, as Cloud Save partitions all Player Data under a unique <code>PlayerId</code>.</li>
+                <li><strong>Initialize Services at Startup:</strong> Make sure your project calls <code>UnityServices.InitializeAsync()</code> and signs the player in (e.g., via <code>AuthenticationService.Instance.SignInAnonymouslyAsync()</code>) before loading or saving any inventory data, as covered in Chapter 3 and Exercise 8.</li>
+            </ol>
+
+            <h3>2. From Volatile Network State to Cloud Persistence</h3>
+
+            <p>In previous exercises, we built a networked inventory backed by <code>NetworkList&lt;NetworkItem&gt;</code>. While <code>NetworkList</code> automatically replicates inventory changes across connected clients during an active session, it lives exclusively in volatile memory (RAM). Once the host disconnects or the game closes, all collected items vanish.</p>
+
+            <p>To retain player inventories between sessions, we store the serialized list in <strong>Unity Cloud Save Player Data</strong> (<code>CloudSaveService.Instance.Data.Player</code>) as a JSON key-value record.</p>
+
+            <h4>Multiplayer Authority Rule (<code>IsOwner</code>)</h4>
+
+            <p>When integrating Cloud Save with <strong>Netcode for GameObjects (NGO)</strong>, keep a critical architectural rule in mind: <code>CloudSaveService.Instance.Data.Player</code> always reads and writes data for the <strong>locally authenticated player</strong> on that machine.</p>
+
+            <p>In a Host-Client setup, the Host instantiates a <code>PlayerInventory</code> component for every connected player. Therefore, only the local owner of each character (<code>if (!IsOwner) return;</code>) must load and upload its own inventory to Cloud Save. If the Host ran Cloud Save logic for remote player objects, it would overwrite its own cloud inventory with other players' items.</p>
+
+            <h3>3. Implementing CloudSaveManager</h3>
+
+            <p>The <code>CloudSaveManager.cs</code> script acts as a persistent singleton service responsible for communicating asynchronously with Unity Cloud Save. Below is the focused implementation containing only the methods required to load and save the player's inventory:</p>
+
+            <pre><code class="language-csharp">
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Unity.Services.CloudSave;
+using Unity.Services.CloudSave.Models;
+using UnityEngine;
+
+public class CloudSaveManager : MonoBehaviour
+{
+    public static CloudSaveManager Instance { get; private set; }
+    private const string InventoryKey = "inventory";
+    private string currentInventoryWriteLock = null;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(this);
+    }
+
+    #region SAVE DATA
+    public async Task&lt;bool&gt; SaveInventoryAsync(List&lt;NetworkItem&gt; inventory)
+    {
+        try
+        {
+            var dataToSave = new Dictionary&lt;string, SaveItem&gt;
+            {
+                { InventoryKey, new SaveItem(inventory, currentInventoryWriteLock) }
+            };
+
+            Dictionary&lt;string, string&gt; result = await CloudSaveService.Instance.Data.Player.SaveAsync(dataToSave);
+            currentInventoryWriteLock = result[InventoryKey];
+
+            Debug.Log($"Inventory saved ({inventory.Count} stacks). New writeLock: {currentInventoryWriteLock}");
+            return true;
+        }
+        catch (CloudSaveValidationException e)
+        {
+            Debug.LogWarning($"WriteLock conflict or validation saving inventory: {e.Message}");
+        }
+        catch (CloudSaveRateLimitedException e)
+        {
+            Debug.LogWarning($"Rate limit reached in Cloud Save: {e.Message}");
+        }
+        catch (CloudSaveException e)
+        {
+            Debug.LogError($"Cloud save error: {e}");
+        }
+
+        return false;
+    }
+    #endregion
+
+    #region LOAD DATA
+    // Loads from player data and deserializes it transforming it into List&lt;NetworkItem&gt;
+    public async Task&lt;List&lt;NetworkItem&gt;&gt; LoadInventoryAsync()
+    {
+        try
+        {
+            var results = await CloudSaveService.Instance.Data.Player.LoadAsync(
+                new HashSet&lt;string&gt; { InventoryKey }
+            );
+
+            if (results.TryGetValue(InventoryKey, out Item item))
+            {
+                currentInventoryWriteLock = item.WriteLock;
+                return item.Value.GetAs&lt;List&lt;NetworkItem&gt;&gt;() ?? new List&lt;NetworkItem&gt;();
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error loading inventory: {e}");
+        }
+
+        return new List&lt;NetworkItem&gt;();
+    }
+    #endregion
+}
+            </code></pre>
+
+            <h4>Key Mechanisms in CloudSaveManager</h4>
+
+            <ul>
+                <li><strong><code>LoadInventoryAsync()</code>:</strong> Queries the <code>"inventory"</code> key from <code>Data.Player</code>. If found, it stores the server's version token in <code>currentInventoryWriteLock</code> and automatically deserializes the JSON payload into a <code>List&lt;NetworkItem&gt;</code>. If the player is new and no record exists yet, it safely returns an empty list (leaving <code>currentInventoryWriteLock</code> as <code>null</code>).</li>
+                <li><strong>Optimistic Concurrency with <code>SaveItem</code> &amp; Write Locks:</strong> Instead of passing raw objects to <code>SaveAsync</code> (which blindly overwrites cloud data), <code>SaveInventoryAsync</code> wraps the list inside <code>new SaveItem(inventory, currentInventoryWriteLock)</code>. Unity's backend compares the submitted token against the stored version: if they match, the save succeeds and returns a fresh <code>writeLock</code>; if another session modified the record concurrently, the server rejects the request with a <code>CloudSaveValidationException</code> to prevent lost updates.</li>
+                <li><strong>Resilient Return Status &amp; Exception Handling:</strong> The method catches <code>CloudSaveValidationException</code> (version conflicts or quota violations), <code>CloudSaveRateLimitedException</code> (exceeding request quotas), and general <code>CloudSaveException</code> network errors, returning <code>false</code> so the caller knows the save must be retried later.</li>
+            </ul>
+
+            <h3>4. The Dirty Flag Programming Pattern</h3>
+
+            <p>A common mistake when adding cloud persistence to a game is calling <code>SaveInventoryAsync()</code> every single time the player picks up an item. In an action or multiplayer game where players rapidly collect coins or loot, saving immediately on every pickup creates two major issues:</p>
+
+            <ul>
+                <li><strong>Rate Limit Throttling:</strong> Unity Cloud Save enforces a default quota of <strong>600 requests per minute per player</strong>. Rapid item pickups can quickly exhaust this quota and trigger <code>CloudSaveRateLimitedException</code> errors.</li>
+                <li><strong>Redundant Network Overhead:</strong> Serializing and transmitting the entire inventory multiple times per second wastes bandwidth and battery life on mobile or browser clients.</li>
+            </ul>
+
+            <p>Conversely, waiting to save <em>only</em> when the player clicks "Quit" is too risky: if the game crashes, the browser tab closes abruptly, or the internet disconnects, the entire session's progress is lost.</p>
+
+            <h4>How Dirty Flag Solves This</h4>
+
+            <p>The <strong>Dirty Flag</strong> pattern decouples fast, frequent changes in local memory from slow, expensive synchronization operations (such as disk I/O or cloud HTTP requests):</p>
+
+            <ol>
+                <li><strong>Track State Changes with a Boolean Flag:</strong> Maintain a simple boolean variable (<code>private bool isDirty = false;</code>). Whenever the inventory is modified in RAM, we do not contact the cloud; we simply set <code>isDirty = true</code>, indicating that the local state has diverged from the cloud state ("dirty").</li>
+                <li><strong>Batch Synchronization on a Schedule:</strong> A background loop checks <code>isDirty</code> at a fixed interval (e.g., every <code>30.0f</code> seconds). If <code>isDirty</code> is <code>false</code>, the loop does nothing—zero network traffic is generated when the inventory hasn't changed.</li>
+                <li><strong>Clear the Flag Only Upon Confirmation:</strong> When <code>isDirty</code> is <code>true</code>, we capture a snapshot of the inventory, upload it asynchronously, and clear the flag. If the upload fails due to a temporary network drop, we set <code>isDirty = true</code> again so the changes are preserved for the next save cycle.</li>
+            </ol>
+
+            <p><i>*Note: We also pair <code>isDirty</code> with a second boolean guard, <code>isSaving</code>, to prevent a new save request from launching if a previous asynchronous upload is still in flight.</i></p>
+
+            <h3>5. Updating PlayerInventory for Cloud Save</h3>
+
+            <p>Now we upgrade <code>PlayerInventory.cs</code> so that it loads the player's saved items upon spawning in the network, reacts to server-authoritative inventory updates using the Dirty Flag pattern, and flushes pending changes periodically and upon application pause or exit:</p>
+
+            <pre><code class="language-csharp">
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Unity.Netcode;
+using UnityEngine;
+
+public class PlayerInventory : NetworkBehaviour
+{
+    public NetworkList&lt;NetworkItem&gt; Inventory;
+    [SerializeField, Tooltip("Add all the items that the player can pick up.")] 
+    private ItemData[] itemDatabase;
+    
+    private bool isDirty = false;
+    private bool isSaving = false;
+    private readonly float saveInterval = 30.0f;
+
+    private void Awake()
+    {
+        Inventory = new NetworkList&lt;NetworkItem&gt;();
+    }
+
+    public override async void OnNetworkSpawn()
+    {
+        // Only owner manages its own Cloud Save
+        if (!IsOwner) return;
+
+        // 1. Load saved inventory
+        List&lt;NetworkItem&gt; savedItems = await CloudSaveManager.Instance.LoadInventoryAsync();
+        if (savedItems.Count &gt; 0)
+        {
+            InitializeInventoryServerRpc(savedItems.ToArray());
+        }
+
+        // 2. Listen applied changes
+        Inventory.OnListChanged += HandleInventoryChanged;
+
+        // 3. Auto save 
+        StartCoroutine(SaveInventoryCoroutine());
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (IsOwner)
+        {
+            Inventory.OnListChanged -= HandleInventoryChanged;
+        }
+    }
+
+    private void HandleInventoryChanged(NetworkListEvent&lt;NetworkItem&gt; changeEvent)
+    {
+        isDirty = true;
+    }
+
+    [Rpc(SendTo.Server)]
+    private void InitializeInventoryServerRpc(NetworkItem[] initialItems)
+    {
+        Inventory.Clear();
+        foreach (var item in initialItems)
+        {
+            Inventory.Add(item);
+        }
+    }
+
+    [Rpc(SendTo.Server)]
+    public void PickupItemRpc(uint pickedItemID, int amount, ulong networkObjectId)
+    {
+        // Stack items in the list
+        bool found = false;
+        for (int i = 0; i &lt; Inventory.Count; i++)
+        {
+            if (Inventory[i].ItemID == pickedItemID)
+            {
+                NetworkItem updated = Inventory[i];
+                updated.Amount += amount;
+                Inventory[i] = updated; // This shoots network synchronization
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            Inventory.Add(new NetworkItem
+            {
+                ItemID = pickedItemID,
+                Amount = amount
+            });
+        }
+
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(networkObjectId, out NetworkObject itemToDespawn))
+        {
+            itemToDespawn.Despawn(false); // We don't destroy the game object
+        }
+    }
+
+    private IEnumerator SaveInventoryCoroutine()
+    {
+        WaitForSeconds wait = new WaitForSeconds(saveInterval);
+        while (true)
+        {
+            yield return wait;
+
+            if (isDirty &amp;&amp; !isSaving)
+            {
+                _ = FlushInventorySaveAsync(); // Discard the Task result cleanly
+            }
+        }
+    }
+
+    private async Task FlushInventorySaveAsync()
+    {
+        if (!isDirty || isSaving || CloudSaveManager.Instance == null) return;
+
+        isSaving = true;
+        isDirty = false;
+
+        // Copy NetworkList to a standard List to serialize it
+        List&lt;NetworkItem&gt; snapshot = new List&lt;NetworkItem&gt;(Inventory.Count);
+        foreach (var item in Inventory)
+        {
+            snapshot.Add(item);
+        }
+
+        bool success = await CloudSaveManager.Instance.SaveInventoryAsync(snapshot);
+
+        // In case of error, we will try to save next cycle
+        if (!success)
+        {
+            isDirty = true;
+        }
+
+        isSaving = false;
+    }
+
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus &amp;&amp; IsOwner &amp;&amp; isDirty)
+        {
+            _ = FlushInventorySaveAsync();
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (IsOwner &amp;&amp; isDirty)
+        {
+            _ = FlushInventorySaveAsync();
+        }
+    }
+
+    public void ShowInventory()
+    {
+        foreach (var networkItem in Inventory)
+        {
+            // Translate the ID to an item
+            ItemData itemData = GetItemDataByID(networkItem.ItemID);
+            
+            Debug.Log($"I have {networkItem.Amount} of {itemData.ItemName}");
+        }
+    }
+
+    private ItemData GetItemDataByID(uint id)
+    {
+        foreach (var item in itemDatabase)
+        {
+            if (item.ItemID == id) return item;
+        }
+        return null;
+    }
+}
+            </code></pre>
+
+            <h4>Step-by-Step Breakdown of the Integration</h4>
+
+            <ol>
+                <li><strong>Initial Load &amp; Server Sync (<code>OnNetworkSpawn</code> &amp; <code>InitializeInventoryServerRpc</code>):</strong> When the local player spawns, the owner awaits <code>LoadInventoryAsync()</code>. Because only the server has write authority over a <code>NetworkList</code>, the client sends the downloaded items to the server via <code>InitializeInventoryServerRpc</code>, which populates <code>Inventory</code> and replicates it across the network. Notice we subscribe to <code>Inventory.OnListChanged</code> <em>after</em> triggering the initial load so we don't mark the freshly loaded data as dirty unnecessarily.</li>
+                <li><strong>Reactive Dirty Flag (<code>HandleInventoryChanged</code>):</strong> Whenever the server stacks an existing item or adds a new one inside <code>PickupItemRpc</code>, NGO replicates the change to the owner client and fires <code>Inventory.OnListChanged</code>, automatically setting <code>isDirty = true</code>.</li>
+                <li><strong>Periodic Auto-Save (<code>SaveInventoryCoroutine</code> &amp; <code>FlushInventorySaveAsync</code>):</strong> Every <code>30.0f</code> seconds, the coroutine checks if unsaved changes exist. Using <a href="https://learn.microsoft.com/es-es/dotnet/csharp/language-reference/tokens/discard">C#'s discard operator</a> (<code>_ = FlushInventorySaveAsync();</code>), it invokes the asynchronous save without blocking the coroutine or triggering compiler warnings. Because <code>NetworkList&lt;T&gt;</code> is a native Netcode container rather than a standard serializable collection, <code>FlushInventorySaveAsync</code> copies its elements into a <code>List&lt;NetworkItem&gt;</code> snapshot before passing it to <code>CloudSaveManager</code>.</li>
+                <li><strong>Lifecycle Safeguards (<code>OnApplicationPause</code> &amp; <code>OnApplicationQuit</code>):</strong> If the player minimizes the game (critical on WebGL and mobile devices) or exits before the 30-second timer elapses, these Unity lifecycle callbacks immediately flush any dirty inventory changes to the cloud.</li>
+            </ol>
+
+            <h3>6. Scene Setup &amp; Testing</h3>
+
+            <ol>
+                <li><strong>Add CloudSaveManager to the Scene:</strong> Create an empty GameObject named <code>CloudSaveManager</code> in your startup/lobby scene and attach <code>CloudSaveManager.cs</code>. Because it calls <code>DontDestroyOnLoad(this)</code>, it will remain accessible when transitioning to your gameplay scene.</li>
+                <li><strong>Ensure Service Initialization:</strong> Confirm that <code>UnityServices.InitializeAsync()</code> and <code>AuthenticationService.Instance.SignInAnonymouslyAsync()</code> finish executing before spawning the player prefab.</li>
+                <li><strong>Verify Player Prefab Setup:</strong> Confirm your player prefab has <code>PlayerInventory.cs</code> attached and all collectible <code>ItemData</code> ScriptableObjects assigned to its <code>itemDatabase</code> array in the Inspector.</li>
+                <li><strong>Test Persistence:</strong> Enter Play Mode, start a Host session, pick up several items in the scene, and wait 30 seconds (or stop Play Mode) until you see <code>Inventory saved (...)</code> in the Console. Restart Play Mode and verify that your previously collected items are automatically restored from Unity Cloud Save.</li>
+            </ol>
+        </section> 
+    </main> 
+
+    <script src="../main.js"></script>
+    <script>
+        cargarMenu("../"); // Le indicamos al menú que también debe subir un nivel
+        hljs.highlightAll();
+    </script>
+</body>
+</html>

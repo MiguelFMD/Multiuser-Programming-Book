@@ -31,6 +31,8 @@ function cargarMenu(rutaBase) {
                 <li><a href="${rutaBase}ejercicios/ejercicio-6.html"><i class="fa-solid fa-bookmark"></i> Exercise 6: Customize serializable types</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-7.html"><i class="fa-solid fa-bookmark"></i> Exercise 7: ObjectPooling, spawning and despawning objects</a></li>
                 <li><a href="${rutaBase}ejercicios/ejercicio-8.html"><i class="fa-solid fa-bookmark"></i> Exercise 8: Unity Relay & WebGL Deployment</a></li>
+                <li><a href="${rutaBase}ejercicios/ejercicio-9.html"><i class="fa-solid fa-bookmark"></i> Exercise 9: Cloud Persistence with Unity Cloud Save</a></li>
+
             </ul>
         </nav>
     `;
