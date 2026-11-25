@@ -399,6 +399,18 @@ public class PlayerInventory : NetworkBehaviour
                 <li><strong>Verify Player Prefab Setup:</strong> Confirm your player prefab has <code>PlayerInventory.cs</code> attached and all collectible <code>ItemData</code> ScriptableObjects assigned to its <code>itemDatabase</code> array in the Inspector.</li>
                 <li><strong>Test Persistence:</strong> Enter Play Mode, start a Host session, pick up several items in the scene, and wait 30 seconds (or stop Play Mode) until you see <code>Inventory saved (...)</code> in the Console. Restart Play Mode and verify that your previously collected items are automatically restored from Unity Cloud Save.</li>
             </ol>
+
+            <h4>Inspecting Player Data in the Unity Cloud Dashboard</h4>
+
+            <p>You can inspect, edit, or delete the stored JSON inventory directly from your browser using the <strong>Unity Cloud Dashboard</strong>:</p>
+
+            <ol>
+                <li><strong>Open the Dashboard:</strong> Go to <a href="https://cloud.unity.com" target="_blank" rel="noopener">cloud.unity.com</a> and sign in with your Unity ID (alternatively, open <code>Edit &gt; Project Settings &gt; Services</code> in Unity and click <strong>Dashboard</strong>).</li>
+                <li><strong>Select Project &amp; Environment:</strong> Choose your linked project from the top project switcher and verify that the active <strong>Environment</strong> (e.g., <code>production</code>) matches the environment configured in your Unity Editor.</li>
+                <li><strong>Navigate to Cloud Save &gt; Player Data:</strong> In the left-hand navigation sidebar, open <strong>Products</strong> (or <strong>LiveOps</strong>) &gt; <strong>Cloud Save</strong>, and select <strong>Player Data</strong>.</li>
+                <li><strong>Search by Player ID:</strong> Copy the <code>PlayerId</code> printed in the Unity Console when signing in (e.g., <code>Signed in with PlayerId: ...</code>), paste it into the <strong>Player ID</strong> search bar, and click <strong>Find Player</strong>.</li>
+                <li><strong>Inspect or Reset the Record:</strong> Locate the <code>inventory</code> key in the player's key-value table to inspect its serialized JSON array (<code>ItemID</code> and <code>Amount</code> entries), its <strong>Default</strong> access class, and its current <strong>Write Lock</strong> token. You can also delete the key from this panel to test how your game initializes a brand-new player.</li>
+            </ol>
         </section> 
     </main> 
 
